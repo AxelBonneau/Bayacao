@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>INTERMEDIARIOS 1.kmz</name>
+	<open>1</open>
+	<StyleMap id="m_ylw-pushpin000">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin0000</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl000</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_icon61">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_icon61</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_icon61</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_icon610">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_icon610</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_icon6110</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_icon6100">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_icon611</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_icon610</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_icon611">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_icon6110</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_icon611</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin0000">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+			<hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl000">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+			<hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+		</IconStyle>
+	</Style>
+	<Style id="sh_icon61">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sh_icon610">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sh_icon611">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sh_icon6110">
+		<IconStyle>
+			<scale>1.2</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sn_icon61">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sn_icon610">
+		<IconStyle>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sn_icon611">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="sn_icon6110">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<StyleMap id="waypoint">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#waypoint_n0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#waypoint_h</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="waypoint1">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#waypoint_n1</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#waypoint_h0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="waypoint_h">
+		<IconStyle>
+			<scale>1.2</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="waypoint_h0">
+		<IconStyle>
+			<scale>1.2</scale>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="waypoint_n0">
+		<IconStyle>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Style id="waypoint_n1">
+		<IconStyle>
+			<Icon>
+				<href>https://maps.google.com/mapfiles/kml/pal4/icon61.png</href>
+			</Icon>
+		</IconStyle>
+	</Style>
+	<Folder>
+		<name>Waypoints</name>
+		<open>1</open>
+		<Placemark>
+			<name>ANDRES</name>
+			<TimeStamp><when>2023-11-15T19:37:55Z</when>
+</TimeStamp>
+			<styleUrl>#waypoint</styleUrl>
+			<Point>
+				<coordinates>-70.012663,18.758905,68.73999999999999</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>FELIPE</name>
+			<TimeStamp><when>2023-11-15T21:51:57Z</when>
+</TimeStamp>
+			<styleUrl>#waypoint</styleUrl>
+			<Point>
+				<coordinates>-69.95572799999999,18.830445,47.38</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>JOAN N</name>
+			<TimeStamp><when>2023-11-15T20:09:00Z</when>
+</TimeStamp>
+			<styleUrl>#waypoint</styleUrl>
+			<Point>
+				<coordinates>-70.012784,18.746123,85.38</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>NOELIA LA MORENA</name>
+			<TimeStamp><when>2023-11-15T20:36:06Z</when>
+</TimeStamp>
+			<styleUrl>#waypoint</styleUrl>
+			<Point>
+				<coordinates>-69.995464,18.77546,54.32999999999999</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Santo Diaz</name>
+			<TimeStamp><when>2023-11-21T18:24:33Z</when>
+</TimeStamp>
+			<styleUrl>#waypoint1</styleUrl>
+			<Point>
+				<coordinates>-69.99826400000001,18.835955,131.93</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>BULITO PUNTO</name>
+			<TimeStamp><when>2023-11-21T18:41:45Z</when>
+</TimeStamp>
+			<styleUrl>#msn_icon610</styleUrl>
+			<Point>
+				<coordinates>-70.00636299999999,18.782596,63.97</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Jose Francisco Polnco Melvin</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-69.9995159067179</longitude>
+				<latitude>18.83680849535464</latitude>
+				<altitude>0</altitude>
+				<heading>2.231378009785998</heading>
+				<tilt>5.391564454379897</tilt>
+				<range>13194.47234965758</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon6100</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.05429597347259,18.85604109567375,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Doña Juana</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-70.11937716428871</longitude>
+				<latitude>18.81423533239683</latitude>
+				<altitude>0</altitude>
+				<heading>2.115997190431303</heading>
+				<tilt>37.7639587436009</tilt>
+				<range>619.1051512081647</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon610</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.12053412143057,18.81380320680354,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Gonzalo</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-70.1198902940483</longitude>
+				<latitude>18.83065174863347</latitude>
+				<altitude>0</altitude>
+				<heading>2.116968764433903</heading>
+				<tilt>57.15972687648905</tilt>
+				<range>495.2064733749849</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon6100</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.12034528934393,18.83004182840612,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Apolonio</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-70.09546041108545</longitude>
+				<latitude>18.78733425126679</latitude>
+				<altitude>0</altitude>
+				<heading>-6.45205282922262</heading>
+				<tilt>55.11382922670349</tilt>
+				<range>430.1969488473873</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon6100</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.0958999099922,18.78682952304363,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Enriquez puesto 2</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-70.00912817267546</longitude>
+				<latitude>18.7445909221906</latitude>
+				<altitude>0</altitude>
+				<heading>-6.361729872120684</heading>
+				<tilt>35.75617776047215</tilt>
+				<range>511.9889883971259</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon6100</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.0103669995348,18.74398431957941,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Ermitaño</name>
+			<LookAt>
+				<gx:TimeSpan>
+					<begin>2023-11-15T19:37:55Z</begin>
+					<end>2023-11-21T18:41:45Z</end>
+				</gx:TimeSpan>
+				<longitude>-69.90131708572969</longitude>
+				<latitude>18.8413255078543</latitude>
+				<altitude>0</altitude>
+				<heading>-6.325511580609636</heading>
+				<tilt>31.34543750694658</tilt>
+				<range>331.1992675525299</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon6100</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-69.90185641531306,18.84134949546867,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Eloy Jimenez</name>
+			<LookAt>
+				<gx:TimeStamp><when>2023-11-15T20:36:06Z</when>
+</gx:TimeStamp>
+				<longitude>-70.08048573865545</longitude>
+				<latitude>18.78037312876529</latitude>
+				<altitude>0</altitude>
+				<heading>-0.004277048227234073</heading>
+				<tilt>26.91698658714752</tilt>
+				<range>263.1592289518803</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon61</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.08113501811877,18.78049672212141,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Ignacio Santana</name>
+			<LookAt>
+				<gx:TimeStamp><when>2023-11-15T19:37:55Z</when>
+</gx:TimeStamp>
+				<longitude>-70.06371060674607</longitude>
+				<latitude>18.8327417063378</latitude>
+				<altitude>0</altitude>
+				<heading>-0.005316516821789442</heading>
+				<tilt>32.30618146133904</tilt>
+				<range>308.8862437692661</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_icon611</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.06465971157911,18.83287374516246,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pedro Pablo</name>
+			<LookAt>
+				<gx:TimeStamp><when>2023-11-15T19:37:55Z</when>
+</gx:TimeStamp>
+				<longitude>-70.05051566973734</longitude>
+				<latitude>18.82320480328518</latitude>
+				<altitude>0</altitude>
+				<heading>0.007984082759830336</heading>
+				<tilt>30.00101958618244</tilt>
+				<range>226.8415701940834</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin000</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-70.0509842603426,18.82304073385689,0</coordinates>
+			</Point>
+		</Placemark>
+	</Folder>
+</Document>
+</kml>
