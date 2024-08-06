@@ -33,7 +33,7 @@ pacman::p_load(
 
 # ------------------- Lecture des Données Excel -------------------
 # Utiliser here() pour définir le chemin vers le fichier Excel
-file_path <- here("datasets","Las horas de laborales","Processed_Historial.xlsx")
+file_path <- here("documents","BayacaoTransit","datasets","Las horas de laborales","Processed_Historial.xlsx")
 
 # Lire toutes les feuilles du fichier Excel dans une liste
 sheets <- excel_sheets(file_path)  # Obtenir les noms des feuilles
@@ -47,22 +47,21 @@ names(sheets_data) <- sheets
 
 # ------------------- Lecture des Données Additionnelles -------------------
 # Utiliser here() pour définir le chemin vers les autres fichiers
-df_compra <- import(here("datasets","Compra","compra_filtra.xlsx"))
-df_productores <- import(here("datasets","Compra", "productores.xlsx"))
+df_compra <- import(here("documents","BayacaoTransit","datasets","Compra","compra_filtra.xlsx"))
+df_productores <- import(here("documents","BayacaoTransit","datasets","Compra", "productores.xlsx"))
 
 # ------------------- Décompression et Lecture du Fichier KMZ -------------------
 # Décompresser et lire le fichier KMZ
-unzip("INTERMEDIARIOS 1.kmz", exdir = here())
-kml_file <- here("doc.kml")
+kml_file <- here("documents","BayacaoTransit","doc.kml")
 df_kml <- st_read(kml_file)
 
 # ------------------- Lecture des Fichiers Shapefile -------------------
 # Lire le shapefile de la carte de la République Dominicaine (niveau administratif 1)
-carte_Dom <- st_read(here("dom_shp", "dom_admbnda_adm1_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
+carte_Dom <- st_read(here("documents","BayacaoTransit","dom_shp", "dom_admbnda_adm1_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
   st_transform(crs = 4326)  # Transformer en CRS WGS 84
 
 # Lire le shapefile de la carte de la République Dominicaine (niveau administratif 3)
-carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
+carte_Dom2 <- st_read(here("documents","BayacaoTransit","dom_shp", "dom_admbnda_adm3_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
   st_transform(crs = 4326)  # Transformer en CRS WGS 84
 
 
