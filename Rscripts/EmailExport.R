@@ -12,9 +12,9 @@ pacman::p_load(
   data.table
 )
 
-download_folder <- here("downloads")  
-extract_folder <- here("extracted")
-file_path <- here("documents","bayacao","dashboard","datasets", "Las horas de laborales", "historial.xlsx")
+download_folder <- here("..","..","downloads")  
+extract_folder <- here("..","..","extracted")
+file_path <- here("datasets", "Las horas de laborales", "historial.xlsx")
 
 # Liste des motifs de fichiers ZIP
 patterns <- c("^Historial_Isuzu_Factoria_1_Grande_PP.*\\.zip$",
@@ -225,7 +225,7 @@ process_sheets_in_chunks <- function(sheets_data, sheets, output_path, chunk_siz
   return(processed_sheets)
 }
 
-output_path <- here("documents", "bayacao", "dashboard","datasets", "Las horas de laborales", "Processed_Historial.xlsx")
+output_path <- here("datasets", "Las horas de laborales", "Processed_Historial.xlsx")
 processed_data <- process_sheets_in_chunks(sheets_data,sheets, output_path)
 
 
