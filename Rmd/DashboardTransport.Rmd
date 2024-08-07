@@ -28,12 +28,13 @@ pacman::p_load(
   purrr,
   rio,
   here,
-  geosphere
+  geosphere,
+  shiny.fluent
 )
 
 # ------------------- Lecture des Données Excel -------------------
 # Utiliser here() pour définir le chemin vers le fichier Excel
-file_path <- here("documents","BayacaoTransit","datasets","Las horas de laborales","Processed_Historial.xlsx")
+file_path <- here("datasets","Las horas de laborales","Processed_Historial.xlsx")
 
 # Lire toutes les feuilles du fichier Excel dans une liste
 sheets <- excel_sheets(file_path)  # Obtenir les noms des feuilles
@@ -45,23 +46,20 @@ sheets_data <- lapply(sheets, function(sheet_name) {
 
 names(sheets_data) <- sheets
 
-# ------------------- Lecture des Données Additionnelles -------------------
-# Utiliser here() pour définir le chemin vers les autres fichiers
-df_compra <- import(here("documents","BayacaoTransit","datasets","Compra","compra_filtra.xlsx"))
-df_productores <- import(here("documents","BayacaoTransit","datasets","Compra", "productores.xlsx"))
+df_compra <- import(here("datasets","Compra","compra_filtra.xlsx"))
+df_productores <- import(here("datasets","Compra", "productores.xlsx"))
 
-# ------------------- Décompression et Lecture du Fichier KMZ -------------------
-# Décompresser et lire le fichier KMZ
-kml_file <- here("documents","BayacaoTransit","doc.kml")
+# ------------------- Lecture du Fichier KML -------------------
+kml_file <- here("kml","doc.kml")
 df_kml <- st_read(kml_file)
 
 # ------------------- Lecture des Fichiers Shapefile -------------------
 # Lire le shapefile de la carte de la République Dominicaine (niveau administratif 1)
-carte_Dom <- st_read(here("documents","BayacaoTransit","dom_shp", "dom_admbnda_adm1_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
+carte_Dom <- st_read(here("dom_shp", "dom_admbnda_adm1_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
   st_transform(crs = 4326)  # Transformer en CRS WGS 84
 
 # Lire le shapefile de la carte de la République Dominicaine (niveau administratif 3)
-carte_Dom2 <- st_read(here("documents","BayacaoTransit","dom_shp", "dom_admbnda_adm3_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
+carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
   st_transform(crs = 4326)  # Transformer en CRS WGS 84
 
 
@@ -108,13 +106,23 @@ dateRangeInput(
 # Observer les changements dans les données et mettre à jour les inputs de date
 observe({
   data <- df_hora_trabajadas()
-  if (is.null(data)) return()  # Ne rien faire si les données sont NULL
+  
+  if (is.null(data) || nrow(data) == 0 || all(is.na(data$Tiempo))) {
+    # Ne rien faire si les données sont NULL, vides ou toutes les valeurs sont NA
+    return()
+  }
   
   # Mettre à jour les inputs de date avec les valeurs min et max des données
+  min_date <- min(data$Tiempo, na.rm = TRUE)
+  max_date <- max(data$Tiempo, na.rm = TRUE)
+  
   updateDateRangeInput(session, "ID002",
-                       min = min(data$Tiempo, na.rm = TRUE),
-                       max = max(data$Tiempo, na.rm = TRUE))
+                       min = min_date,
+                       max = max_date,
+                       start = min_date,
+                       end = max_date)
 })
+
 
 ```
 
@@ -245,40 +253,53 @@ leafletOutput("map1", height="80vh")
 
 ## Données Clés
 
-### La distance parcourue en km sur les 30 derniers jours (route bleue)
+### 
 ```{r}
-output$valueBox6 <- renderValueBox({
-    data <- df_hora_trabajadas()
-    valueBox(
-      value =sum(data$distance),
-    color = "#8B0000"
+output$valueBox6 <- renderUI({
+  data <- df_hora_trabajadas()
+  
+  value <- paste0(round(sum(data$distance),2)," KM")
+  
+  div(
+    class = "custom-container",
+    div(
+      h4("Distance Totale sur les 15 jours derniers jours"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox6")
+
+uiOutput("valueBox6")
 ```
 
-### La distance parcourue cette journée  
+### 
 ```{r}
-output$valueBox7 <- renderValueBox({
-    data <- df_hora_trabajadas()
-    start_date <- as.Date(input$ID002[1])
-    end_date <- as.Date(input$ID002[2])
-    data <- data %>%
-      filter(Tiempo >= start_date & Tiempo <= end_date)
-    
-    valueBox(
-      value =sum(data$distance),
-    color = "#E6B336"
+output$valueBox7 <- renderUI({
+  data <- df_hora_trabajadas()
+  start_date <- as.Date(input$ID002[1])
+  end_date <- as.Date(input$ID002[2])
+  data <- data %>%
+    filter(Tiempo >= start_date & Tiempo <= end_date)
+  
+  value <- paste0(round(sum(data$distance),2)," KM")
+  
+  div(
+    class = "custom-container2",
+    div(
+      h4("Distance Totale dans la zone de temps sélectionnée"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox7")
+
+uiOutput("valueBox7")
 ```
 
-### Le temps passé en circulant cette journée 
+### 
 ```{r}
-output$valueBox8 <- renderValueBox({
+output$valueBox8 <- renderUI({
   data <- df_hora_trabajadas()
   data <- data %>%
     filter(is_stop == F)
@@ -296,14 +317,18 @@ output$valueBox8 <- renderValueBox({
   
   # Formater la chaîne
   value <- sprintf("%d jours %02d:%02d:%02d", days, hours, minutes, seconds)
-  
-  valueBox(
-    value = value,
-    color = "#8B0000"
+
+  div(
+    class = "custom-container",
+    div(
+      h4("Le temps passé en circulant sur la zone sélectionnée"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox8")
+
+uiOutput("valueBox8")
 ```
 
 # Para una dia {data-navmenu="Variacion de compra" data-navmenu-icon="fa-bookmark"}
@@ -492,29 +517,29 @@ output$rankingPlot2 <- renderPlot({
 }, width = "auto")
 
 plotOutput("rankingPlot2", height = "50vh")
-
-
 ```
 
 # Llave de datos {data-navmenu="Variacion de compra" data-orientation=rows}
 
 ## Sidebar {.sidebar}
 ```{r}
-
-radioGroupButtons("ID005",
-                 "Condicion:",
-                 c("Baba" = "baba",
-                   "Seco" = "seco",
-                   "Fermentado" = "fermentado"),
-                 selected = c("baba")
+# ------------------- Sélecteur de Condition -------------------
+# Utiliser radioGroupButtons pour sélectionner une condition
+radioGroupButtons(
+  inputId = "ID005",
+  label = "Condicion:",
+  choices = c("Baba" = "baba", "Seco" = "seco", "Fermentado" = "fermentado"),
+  selected = "baba"
 )
 
-# Liste des acheteurs uniques
+# ------------------- Sélecteur d'Acheteur -------------------
+# Liste des acheteurs uniques triés
 unique_compradores <- sort(unique(df_compra$Comprador))
 
-# Créer une liste d'options pour le selectInput
+# Créer une liste d'options pour le pickerInput
 options_compradores <- c("Seleccionar todo", unique_compradores)
 
+# Utiliser pickerInput pour sélectionner un ou plusieurs acheteurs
 pickerInput(
   inputId = "ID006",
   label = "Elija uno o todos compradores:",
@@ -528,12 +553,14 @@ pickerInput(
   )
 )
 
+# ------------------- Filtrage des Données -------------------
+# Fonction réactive pour filtrer les données en fonction de la condition et des acheteurs sélectionnés
 df_compra_filtered <- reactive({
-  # Vérifie si "Seleccionar todo" est sélectionné
   if ("Seleccionar todo" %in% input$ID006) {
+    # Si "Seleccionar todo" est sélectionné, filtre uniquement par condition
     df_compra %>% filter(Condicion == input$ID005)
   } else {
-    # Sinon, filtre par acheteurs sélectionnés
+    # Sinon, filtre par acheteurs sélectionnés et condition
     df_compra %>% filter(Comprador %in% input$ID006 & Condicion == input$ID005)
   }
 })
@@ -541,7 +568,7 @@ df_compra_filtered <- reactive({
 
 ```
 
-## Column
+## Column {data-height=1300}
 
 ### BoxPlot
 ```{r}
@@ -592,80 +619,102 @@ output$boxplot1 <- renderPlotly({
   fig
 })
 
-plotlyOutput("boxplot1", height = "50vh")
+plotlyOutput("boxplot1", height = "90vh")
 
 ```
 
 ## Column 
 
-### Le prix au kilo d'un sac acheté en moyenne
+### 
 ```{r}
-output$valueBox1 <- renderValueBox({
+output$valueBox1 <- renderUI({
   df_compra_filter <- df_compra_filtered()
-  valueBox(
-    value = dollar(mean(df_compra_filter$total_kg_Bruto/df_compra_filter$cantidad_saco)),
-    color = "#E6B336"
+  value = dollar(mean(df_compra_filter$total_kg_Bruto/df_compra_filter$cantidad_saco))
+  div(
+    class ="custom-container",
+    div(
+      h4("Le prix au kilo d'un sac acheté en moyenne"),
+      h2(value)
+    )
   )
 })
 
 
-
-valueBoxOutput("valueBox1")
+uiOutput("valueBox1")
 ```
 
-### Nombre d'achats par jours et par acheteurs
+### 
 ```{r}
-output$valueBox2 <- renderValueBox({
-    df_compra_filter <- df_compra_filtered()
-    valueBox(
-      value = nrow(df_compra_filter),
-    color = "#8B0000"
-  )
-})
-
-valueBoxOutput("valueBox2", width = 6)
-```
-
-### Total des Écarts de Poids entre Achat et Réception à l'Usine
-```{r}
-output$valueBox3 <- renderValueBox({
+output$valueBox2 <- renderUI({
   df_compra_filter <- df_compra_filtered()
-  valueBox(
-    value = paste(sum(df_compra_filter$delta_kg)," KG"),
-    color = "#E6B336"
+  value = nrow(df_compra_filter)
+  div(
+    class ="custom-container2",
+    div(
+      h4("Nombre d'achats par jours et par acheteurs"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox3")
+uiOutput("valueBox2")
+```
+
+### 
+```{r}
+output$valueBox3 <- renderUI({
+  df_compra_filter <- df_compra_filtered()
+
+  value = paste(sum(df_compra_filter$delta_kg)," KG")
+  div(
+    class ="custom-container",
+    div(
+      h4("Total des Écarts de Poids entre Achat et Réception à l'Usine"),
+      h2(value)
+    )
+  )
+})
+
+uiOutput("valueBox3")
 ```
 
 
-### Moyenne des Variations de Poids
+### 
 ```{r}
-output$valueBox4 <- renderValueBox({
+output$valueBox4 <- renderUI({
   df_compra_filter <- df_compra_filtered()
   somme_poids <- sum(df_compra_filter$total_kg_pagado, na.rm =T)
   moyenne_ponderee <- sum(df_compra_filter$delta_kg * df_compra_filter$total_kg_pagado)/somme_poids
-  valueBox(
-    value = paste(round(moyenne_ponderee ,2)," KG"),
-    color = "#8B0000"
+  
+  value = paste(round(moyenne_ponderee ,2)," KG")
+  div(
+    class ="custom-container2",
+    div(
+      h4("Moyenne des Variations de Poids"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox4")
+uiOutput("valueBox4")
 ```
 
-### Nombre de KG acheté (Brut arrivé à l'usine)
+### 
 ```{r}
-output$valueBox5 <- renderValueBox({
+output$valueBox5 <- renderUI({
   df_compra_filter <- df_compra_filtered()
-  valueBox(
-    value = paste(round(sum(df_compra_filter$total_kg_Bruto))," KG"),
-    color = "#E6B336"
+
+  value = paste(round(sum(df_compra_filter$total_kg_Bruto))," KG")
+  div(
+    class ="custom-container",
+    div(
+      h4("Nombre de KG acheté (Brut arrivé à l'usine)"),
+      h2(value)
+    )
   )
 })
 
-valueBoxOutput("valueBox5")
+uiOutput("valueBox5")
 ```
 
 # Compradores {data-navmenu="Variacion de compra" data-orientation=rows}
@@ -673,18 +722,20 @@ valueBoxOutput("valueBox5")
 ## Sidebar {.sidebar}
 
 ```{r}
-radioGroupButtons("ID007",
-                 "Condicion:",
-                 c("Baba" = "baba",
-                   "Seco" = "seco",
-                   "Fermentado" = "fermentado"),
-                 selected = c("baba")
+# ------------------- Sélecteur de Condition -------------------
+# Radio buttons pour choisir la condition
+radioGroupButtons(
+  inputId = "ID007",
+  label = "Condicion:",
+  choices = c("Baba" = "baba", "Seco" = "seco", "Fermentado" = "fermentado"),
+  selected = "baba"
 )
 
+# ------------------- Sélecteur de Acheteurs -------------------
 # Liste des acheteurs uniques
 unique_compradores <- sort(unique(df_compra$Comprador))
 
-# Créer une liste d'options pour le selectInput
+# Créer une liste d'options pour le pickerInput
 options_compradores <- c("Seleccionar todo", unique_compradores)
 
 pickerInput(
@@ -700,26 +751,27 @@ pickerInput(
   )
 )
 
+# ------------------- Données Filtrées -------------------
+# Réactive pour filtrer les données en fonction de la condition et des acheteurs sélectionnés
 df_compra_filtered2 <- reactive({
-  # Vérifie si "Seleccionar todo" est sélectionné
   if ("Seleccionar todo" %in% input$ID008) {
     df_compra %>% filter(Condicion == input$ID007)
   } else {
-    # Sinon, filtre par acheteurs sélectionnés
     df_compra %>% filter(Comprador %in% input$ID008 & Condicion == input$ID007)
   }
 })
 
+# Réactive pour filtrer les producteurs
 df_productores_filtered <- reactive({
-  # Vérifie si "Seleccionar todo" est sélectionné
   if ("Seleccionar todo" %in% input$ID008) {
     df_productores %>% filter(Condicion == input$ID007)
   } else {
-    # Sinon, filtre par acheteurs sélectionnés
     df_productores %>% filter(Comprador %in% input$ID008 & Condicion == input$ID007)
   }
 })
 
+# ------------------- Données Longues -------------------
+# Transformation des données en format long et ajout de colonnes supplémentaires
 data_long <- reactive({
   df_compra_filtered2() %>%
     pivot_longer(cols = c("total_kg_pagado", "total_kg_Bruto"), names_to = "Type", values_to = "Kg") %>%
@@ -732,10 +784,11 @@ data_long <- reactive({
     summarise(Kg = sum(Kg), .groups = 'drop', Month_Year = first(Month_Year))
 })
 
+# ------------------- Tableau Résumé -------------------
+# Création d'un tableau résumé avec les données filtrées
 summary_table_dt <- reactive({
-  # Obtenir les données filtrées
   df_filtered <- df_compra_filtered2()
-  
+
   # Ajouter les colonnes pour le mois et le numéro de la semaine
   df_filtered <- df_filtered %>%
     mutate(
@@ -743,7 +796,7 @@ summary_table_dt <- reactive({
       Month = factor(Month, levels = month.name),  # Utiliser les niveaux de mois pour le tri correct
       Week = isoweek(Fecha)
     )
-  
+
   # Grouper les données par mois et semaine et calculer les sommes totales par catégorie
   total_sums <- df_filtered %>%
     group_by(Week) %>%
@@ -754,7 +807,7 @@ summary_table_dt <- reactive({
       .groups = 'drop'
     ) %>%
     arrange(desc(Week))
-  
+
   # Calculer les sommes cumulées
   summary_table <- total_sums %>%
     arrange(Week) %>%
@@ -783,6 +836,7 @@ summary_table_dt <- reactive({
   
   summary_table
 })
+
 ```
 
 ## Column 
@@ -793,8 +847,8 @@ output$plot2 <- renderPlotly({
   p <- ggplot(data_long(), aes(x = Week_Start_Date, y = Kg, fill = Type, color = Type, group = Type)) +
     geom_area(position = "dodge", alpha = 0.5) +
     geom_point(size = 2, shape = 21, stroke = 1.5) +
-    scale_fill_manual(values = c("total_kg_pagado" = "#E1BBCB", "total_kg_Bruto" = "#772953")) +
-    scale_color_manual(values = c("total_kg_pagado" = "#E1BBCB", "total_kg_Bruto" = "#772953")) +
+    scale_fill_manual(values = c("total_kg_pagado" = "#E6B336", "total_kg_Bruto" = "#8B0000")) +
+    scale_color_manual(values = c("total_kg_pagado" = "#E6B336", "total_kg_Bruto" = "#8B0000")) +
     scale_x_date(
       name = "Date",
       date_breaks = "1 month",
@@ -812,22 +866,19 @@ output$plot2 <- renderPlotly({
     theme_minimal(base_family = "Arial") +
     theme(
       plot.background = element_rect(fill = "white"),
-      axis.text.x = element_text(angle = 45, hjust = 1, color = "#772953"),
+      axis.text.x = element_text(angle = 45, hjust = 1, color = "#8B0000"),
       legend.position = "bottom",
-      plot.title = element_text(size = 12, face = "bold", color = "#772953"),
-      axis.title = element_text(size = 10, color = "#772953"),
-      axis.text = element_text(size = 10, color = "#772953"),
+      plot.title = element_text(size = 16, color = "#000000"),
+      plot.title.position = "plot",  # Positionne le titre au-dessus du graphique
+      axis.title = element_text(size = 10, color = "#000000"),
+      axis.text = element_text(size = 10, color = "#000000"),
       panel.grid.minor = element_blank(),
-      panel.grid.major = element_line(color = "#E1BBCB", size = 0.5)
+      panel.grid.major = element_line(color = "#000000", size = 0.3)
     )
   ggplotly(p)
 })
 
-
-
 plotlyOutput("plot2", width = "90vh")
-
-
 ```
 
 ## Column
@@ -863,83 +914,6 @@ output$table2 <- renderDT({
 })
 
 DTOutput("table2")
-```
-
-# Productores
-
-## Sidebar {.sidebar}
-
-## Column 
-
-### 
-```{r}
-output$table_productores <- renderDT({
-  data_long2 <- df_productores_filtered() %>%
-    group_by(Productor) %>%
-    summarise(total = n(), .groups = 'drop') %>%
-    arrange(desc(total)) %>%
-    top_n(10, wt = total)  # Conserver uniquement les 10 premiers producteurs
-
-  datatable(
-    data_long2,
-    options = list(
-      pageLength = 10,
-      autoWidth = TRUE,
-      order = list(list(2, 'desc')),  # Trier par colonne 'total' en ordre décroissant
-      dom = 't'  # Pour ne montrer que le tableau sans pagination
-    ),
-    colnames = c("Producteur", "Nombre de Contributions"),
-    caption = htmltools::tags$caption(
-      style = 'caption-side: top; text-align: center; font-size: 16px; font-weight: bold;',
-      "Classement des 10 Plus Gros Producteurs"
-    )
-  )
-}, server = FALSE)
-
-DTOutput("table_productores")
-```
-
-###
-```{r}
-
-output$map2 <- renderLeaflet({
-  data_long3 <- df_productores_filtered()
-  data_long3$Location <- paste0("Municipio ", data_long3$Location)
-  
-  df_municipalidad <- as.data.frame(table(data_long3$Location))
-  
-  colnames(df_municipalidad) <- c("Location", "Count")
-  
-  df_municipalidad <- df_municipalidad %>%
-    group_by(Location) %>%
-    summarise(Count = sum(Count), .groups = 'drop')
-  
-  df_dom_merge <- carte_Dom2 %>%
-    merge(df_municipalidad, by.x = "ADM3_ES", by.y = "Location", all.x = TRUE)
-  
-  pal <- colorBin("YlOrRd", domain = df_dom_merge$Count, bins = 5, na.color = "transparent")
-  
-  leaflet(df_dom_merge) %>%
-    addTiles() %>%
-    addPolygons(
-      fillColor = ~pal(Count),
-      fillOpacity = 0.7,
-      color = "black",
-      weight = 1,
-      popup = ~paste(ADM3_ES, "<br>", "Count: ", Count)
-    ) %>%
-    addLegend(
-      position = "bottomright",
-      pal = pal,
-      values = ~Count,
-      title = "Occurrences",
-      opacity = 1,
-      labFormat = labelFormat(suffix = " occurrences")
-    )
-})
-
-leafletOutput("map2", height = "50vh")
-
 ```
 
 # Datos del tablero
@@ -1050,6 +1024,31 @@ DTOutput("dataCompra")
 .my-custom-table th {
   background-color: #772953;
   color: white;
+}
+
+.custom-container {
+  background-color: #8B0000; /* Couleur de fond */
+  color: white; /* Couleur du texte */
+  padding: 13px; /* Espacement interne */
+  border-radius: 5px; /* Coins arrondis */
+  display: flex; /* Utilise Flexbox pour le centrage */
+  align-items: center; /* Centre verticalement */
+  justify-content: center; /* Centre horizontalement */
+  width: 100%; /* Remplir la largeur disponible */
+  height: 100%; /* Remplir la hauteur disponible */
+  text-align: center; /* Centre le texte */
+}
+
+.custom-container2 {
+  background-color: #E6B336; /* Couleur de fond */
+  padding: 13px; /* Espacement interne */
+  border-radius: 5px; /* Coins arrondis */
+  display: flex; /* Utilise Flexbox pour le centrage */
+  align-items: center; /* Centre verticalement */
+  justify-content: center; /* Centre horizontalement */
+  width: 100%; /* Remplir la largeur disponible */
+  height: 100%; /* Remplir la hauteur disponible */
+  text-align: center; /* Centre le texte */
 }
 
 ```
