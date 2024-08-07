@@ -1,0 +1,4 @@
+
+
+rmarkdown::run("Rmd/Bayacao Dashboard.Rmd")
+
