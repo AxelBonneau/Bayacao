@@ -1,26 +1,27 @@
 {
-    "id": "D57CA462",
-    "path": "~/Documents/BayacaoTransit/Rscripts/EmailExport.R",
-    "project_path": "Rscripts/EmailExport.R",
+    "id": "B3A8AEB4",
+    "path": "~/Documents/BayacaoTransit/main.R",
+    "project_path": "main.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1723030557107.0,
+    "created": 1723040942412.0,
     "source_on_save": false,
-    "relative_order": 3,
+    "relative_order": 2,
     "properties": {
+        "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "20,62",
-        "scrollLine": "59"
+        "cursorPosition": "1,0",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1723034824,
+    "lastKnownWriteTime": 1723041623,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1723034824059,
+    "last_content_update": 1723041623481,
     "read_only": false,
     "read_only_alternatives": []
 }
