@@ -1,5 +1,5 @@
 ---
-title: "Bayacao Transport"
+title: "Bayacao Dashboard"
 output: 
   flexdashboard::flex_dashboard:
     orientation: column
@@ -65,7 +65,7 @@ carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), opti
 
 ```
 
-# Mapa de lugares de los conductores{data-orientation=rows}
+# Map of Driver Locations{data-orientation=rows}
 
 ## Sidebar {.sidebar}
 
@@ -74,7 +74,7 @@ carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), opti
 # Utiliser selectizeInput pour choisir la feuille
 selectizeInput(
   inputId = "ID001",
-  label = "Choisissez la feuille:",
+  label = "Choose a sheet :",
   choices = sheets,
   selected = sheets[1]
 )
@@ -93,7 +93,7 @@ df_hora_trabajadas <- reactive({
 # Utiliser dateRangeInput pour sélectionner une période
 dateRangeInput(
   inputId = "ID002",
-  label = "Sélectionner la période:",
+  label = "Select a period :",
   start = Sys.Date() - 2,  # Valeur par défaut, ajuster selon vos besoins
   end = Sys.Date() - 1,
   startview = "month",
@@ -113,20 +113,24 @@ observe({
   }
   
   # Mettre à jour les inputs de date avec les valeurs min et max des données
-  min_date <- min(data$Tiempo, na.rm = TRUE)
-  max_date <- max(data$Tiempo, na.rm = TRUE)
+  min_date <- min(as.Date(data$Tiempo,format = "%Y-%m-%d"), na.rm = TRUE)
+  max_date <- max(as.Date(data$Tiempo,format = "%Y-%m-%d"), na.rm = TRUE)
+  
+  # Calculer la date de fin pour les trois premiers jours
+  start_date <- max_date-1
+  end_date <- max_date 
   
   updateDateRangeInput(session, "ID002",
                        min = min_date,
                        max = max_date,
-                       start = min_date,
-                       end = max_date)
+                       start = start_date,
+                       end = end_date)
 })
 
 
 ```
 
-## Mapa de la Republica Dominica
+## Map of Dominican Republic
 
 ```{r}
 # Fonction pour calculer les distances entre les points
@@ -156,8 +160,8 @@ output$map1 <- renderLeaflet({
     return(data)
   }
   
-  start_date <- as.Date(date_range[1])
-  end_date <- as.Date(date_range[2])
+  start_date <- as.Date(date_range[1], format = "%Y-%m-%d")
+  end_date <- as.Date(date_range[2], format = "%Y-%m-%d")
 
   if (is.null(data)) return(NULL)
   threshold_distance <- 3000  # Seuil de distance en mètres pour segmenter les routes
@@ -175,13 +179,17 @@ output$map1 <- renderLeaflet({
               label = first(local_name))
   
   df_filtered_today <- df_filtered %>%
-    filter(Tiempo >= start_date & Tiempo <= end_date)
+    filter(Tiempo >= start_date & Tiempo <= end_date +1)
 
   if (!is.null(df_filtered) && nrow(df_filtered) > 0) {
 
     mymap <- leaflet() %>%
       addTiles()
       
+    # Ajouter les routes en polylines bleues
+    mymap <- mymap %>%
+      addPolygons(data = carte_Dom, color = "black", weight = 1, fillOpacity = 0.2)
+    
     for (segment_id in unique(df_filtered$segment)) {
       segment_data <- df_filtered %>% filter(segment == segment_id)
       mymap <- mymap %>%
@@ -189,18 +197,24 @@ output$map1 <- renderLeaflet({
           data = segment_data,
           lng = ~longitude,
           lat = ~latitude,
-          color = "blue"
+          color = "blue",
+          weight = 2,
+          group = "Routes"
         ) 
     }
 
+    # Ajouter les points d'arrêt en orange
     mymap <- mymap %>%
-      addPolygons(data = carte_Dom, color = "black", weight = 1, fillOpacity = 0.2) %>%
       addCircleMarkers(data = stops,
                       color = "orange",
                       lng = ~longitude,
                       lat = ~latitude,
                       radius = 6,
-                      label = ~paste(label)) %>%
+                      label = ~paste(label),
+                      group = "Stops")
+    
+    # Ajouter les producteurs en rouge
+    mymap <- mymap %>%
       addMarkers(data = df_kml,
                  icon = icons(
                    iconUrl = "https://cdn-icons-png.flaticon.com/512/684/684908.png",
@@ -210,16 +224,16 @@ output$map1 <- renderLeaflet({
                  label = ~paste(Name),
                  group = "Producers")
     
-    # Calculer le centre géographique du segment rouge pour centrer la carte
-    red_segment_data <- df_filtered %>% filter(segment == unique(df_filtered$segment)[1])  # Prenez le premier segment rouge pour l'exemple
+    # Calculer le centre géographique du premier segment pour centrer la carte
+    red_segment_data <- df_filtered %>% filter(segment == unique(df_filtered$segment)[1])  # Prenez le premier segment pour l'exemple
     center_lon <- mean(red_segment_data$longitude, na.rm = TRUE)
     center_lat <- mean(red_segment_data$latitude, na.rm = TRUE)
     
-    # Définir la vue initiale pour centrer sur le segment rouge
+    # Définir la vue initiale pour centrer sur le segment
     mymap <- mymap %>%
       setView(lng = center_lon, lat = center_lat, zoom = 10)
     
-    # Ajouter les marqueurs de vitesse pour les segments verts
+    # Ajouter les marqueurs de vitesse pour les segments filtrés
     mymap <- mymap %>%
       addCircleMarkers(
         data = df_filtered_today,
@@ -227,15 +241,49 @@ output$map1 <- renderLeaflet({
         lat = ~latitude,
         color = ~colorNumeric(palette = "YlOrRd", domain = df_filtered_today$speed)(speed),
         radius = ~sqrt(speed) / 4,  # Taille des marqueurs en fonction de la vitesse
-        popup = ~paste("Vitesse:", speed, "km/h"),
-        fillOpacity = 0.7
+        popup = ~paste("Speed:", speed, "kph"),
+        fillOpacity = 0.7,
+        group = "Speed"
       ) %>%
       addLegend(
         position = "bottomright",
         pal = colorNumeric(palette = "YlOrRd", domain = df_filtered_today$speed),
         values = df_filtered_today$speed,
-        title = "Vitesse (km/h)",
-        opacity = 1
+        title = "Speed (kph)",
+        opacity = 1,
+        group = "Speed"
+      )
+    
+    # Ajouter des légendes pour chaque type de données
+    mymap <- mymap %>%
+      addLegend(
+        position = "bottomleft",
+        colors = c("blue"),
+        labels = c("Routes"),
+        title = "Legend"
+      ) %>%
+      addLegend(
+        position = "bottomleft",
+        colors = c("orange"),
+        labels = c("Stops"),
+        title = "Legend",
+        opacity = 0.5,
+        group = "Stops"
+      ) %>%
+      addLegend(
+        position = "bottomleft",
+        colors = c("red"),
+        labels = c("Producers"),
+        title = "Legend",
+        opacity = 0.5,
+        group = "Producers"
+      )
+    
+    # Ajouter un contrôle des couches pour activer/désactiver les couches
+    mymap <- mymap %>%
+      addLayersControl(
+        overlayGroups = c("Routes", "Stops", "Producers", "Speed"),
+        options = layersControlOptions(collapsed = FALSE)
       )
     
     # Afficher la carte
@@ -263,7 +311,7 @@ output$valueBox6 <- renderUI({
   div(
     class = "custom-container",
     div(
-      h4("Distance Totale sur les 15 jours derniers jours"),
+      h4("Total Distance over the Last 15 Days"),
       h2(value)
     )
   )
@@ -277,17 +325,17 @@ uiOutput("valueBox6")
 ```{r}
 output$valueBox7 <- renderUI({
   data <- df_hora_trabajadas()
-  start_date <- as.Date(input$ID002[1])
-  end_date <- as.Date(input$ID002[2])
+  start_date <- as.Date(input$ID002[1], format = "%Y-%m-%d")
+  end_date <- as.Date(input$ID002[2], format = "%Y-%m-%d")
   data <- data %>%
-    filter(Tiempo >= start_date & Tiempo <= end_date)
+    filter(Tiempo >= start_date & Tiempo <= end_date + 1)
   
   value <- paste0(round(sum(data$distance),2)," KM")
   
   div(
     class = "custom-container2",
     div(
-      h4("Distance Totale dans la zone de temps sélectionnée"),
+      h4("Total Distance in the Selected Time Range"),
       h2(value)
     )
   )
@@ -316,13 +364,13 @@ output$valueBox8 <- renderUI({
   seconds <- total_seconds %% 60
 
   # Format the string
-  value <- paste0(days, " jour(s) ",hours,":",minutes,":",seconds)
+  value <- paste0(days, " day(s) ",hours,":",minutes,":",seconds)
   
   
   div(
     class = "custom-container",
     div(
-      h4("Le temps passé en circulant sur la zone sélectionnée"),
+      h4("Time Spent Traveling within the Selected Area"),
       h2(value)
     )
   )
@@ -331,7 +379,7 @@ output$valueBox8 <- renderUI({
 uiOutput("valueBox8")
 ```
 
-# Para una dia {data-navmenu="Variacion de compra" data-navmenu-icon="fa-bookmark"}
+# Based on a Duration {data-navmenu="Purchase variation" data-navmenu-icon="fa-bookmark"}
 
 ## Sidebar {.sidebar}
 
@@ -340,7 +388,7 @@ uiOutput("valueBox8")
 # Utiliser dateRangeInput pour sélectionner un intervalle de dates
 dateRangeInput(
   inputId = "ID003",
-  label = "Seleccionar rango de fechas:",
+  label = "Select Date Range :",
   start = max(df_compra$Fecha, na.rm = TRUE) - days(7),
   end = max(df_compra$Fecha, na.rm = TRUE),
   min = min(df_compra$Fecha, na.rm = TRUE),
@@ -355,7 +403,7 @@ dateRangeInput(
 # Utiliser checkboxGroupButtons pour sélectionner les conditions
 checkboxGroupButtons(
   inputId = "ID004",
-  label = "Condicion:",
+  label = "Condition :",
   choices = c("Baba" = "baba", "Seco" = "seco", "Fermentado" = "fermentado"),
   selected = c("baba"),
   direction = "vertical"
@@ -383,20 +431,30 @@ df_filtered <- reactive({
     pivot_longer(cols = c(total_kg_pagado, total_kg_Bruto),
                  names_to = "Type",
                  values_to = "kg") %>%
-    mutate(Type = factor(Type, levels = c("total_kg_pagado", "total_kg_Bruto"), labels = c("Acheté", "Transmis à la factory")))
+    mutate(Type = factor(Type, levels = c("total_kg_pagado", "total_kg_Bruto"), labels = c("Purchase", "Handle in the factory")))
 })
 
 # ------------------- Calcul des Variations -------------------
 # Fonction réactive pour calculer les variations des données filtrées
 variations_df <- reactive({
-  filtered_df() %>%
+  # Calculer le total pour chaque 'Comprador'
+  summary_df <- filtered_df() %>%
     group_by(Comprador, Condicion) %>%
-    summarise(
-      total_kg_pagado = sum(total_kg_pagado, na.rm = TRUE),
-      total_kg_Bruto = sum(total_kg_Bruto, na.rm = TRUE)
-    ) %>%
-    mutate(proporcion_delta = (total_kg_Bruto - total_kg_pagado) / total_kg_pagado * 100) %>%
-    select(Comprador, Condicion, proporcion_delta)
+    summarise(delta_kg = sum(delta_kg, na.rm = TRUE)) %>%
+    ungroup() %>%
+    group_by(Comprador) %>%
+    summarise(total_delta_kg = sum(delta_kg, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Calculer le total global pour toutes les proportions
+  total_global <- sum(summary_df$total_delta_kg, na.rm = TRUE)
+  
+  # Ajouter la proportion et trier les résultats
+  summary_df <- summary_df %>%
+    mutate(total_proporcion_delta = total_delta_kg / abs(total_global)) %>%
+    arrange(desc(total_proporcion_delta))
+  
+  return(summary_df)
 })
 
 # ------------------- Filtrage et Agrégation Supplémentaires -------------------
@@ -414,9 +472,9 @@ variations2_df <- reactive({
 
 ```
 
-## Acheteurs {data-width=550}
+## Column {data-width=550}
 
-### BarPlot
+### 
 
 ```{r}
 output$barplot1 <- renderPlot({
@@ -429,10 +487,10 @@ output$barplot1 <- renderPlot({
               vjust = -0.5,
               size = 3) +
     labs(
-      title = "Nombre de kg achetés vs. transmis à la factory",
-      x = "Acheteur",
-      y = "Nombre de Kg",
-      fill = "Type de Kg"
+      title = "Quantity of kg Purchased vs. Transferred to the Factory",
+      x = "Buyers",
+      y = "Quantity of kg",
+      fill = "Type of kg"
     ) +
     theme_minimal(base_size = 15) +
     theme(
@@ -452,17 +510,19 @@ plotOutput("barplot1", height = "50vh")
 
 ## Ranking {data-width=450} 
 
-### Ranking Plot
+### 
 ```{r}
 output$rankingPlot1 <- renderPlot({
-  ggplot(variations_df(), aes(x = reorder(Comprador, -proporcion_delta), y = proporcion_delta, fill = proporcion_delta)) +
+  ggplot(variations_df(), aes(x = reorder(Comprador, -total_proporcion_delta), y = total_proporcion_delta, fill = total_proporcion_delta)) +
     geom_bar(stat = "identity") +
-    geom_text(aes(label = paste0(round(proporcion_delta, 2), "%")), vjust = -0.5, size = 3) +
+    geom_text(aes(label = paste0(round(total_proporcion_delta, 2), " %")),
+              vjust = -0.5,
+              size = 3) +
     labs(
-      title = "Classement des acheteurs par variation proportionnelle",
-      x = "Acheteur",
-      y = "Variation (%)",
-      fill = "Variation (%)"
+      title = "Ranking of Buyers by Total Variation in kg",
+      x = "Buyers",
+      y = "total Variation (%)",
+      fill = "total Variation (%)"
     ) +
     scale_fill_gradient2(
       low = "#e73e01",   # Couleur pour les valeurs négatives
@@ -485,7 +545,7 @@ plotOutput("rankingPlot1", height = "50vh")
 
 ```
 
-### Ranking Plot2 
+### 
 ```{r}
 output$rankingPlot2 <- renderPlot({
   ggplot(variations2_df(), aes(x = reorder(Comprador, -total_delta_kg), y = total_delta_kg, fill = total_delta_kg)) +
@@ -494,10 +554,10 @@ output$rankingPlot2 <- renderPlot({
               vjust = -0.5,
               size = 3) +
     labs(
-      title = "Classement des acheteurs par somme des variations en kg",
-      x = "Acheteur",
-      y = "Variation totale (kg)",
-      fill = "Variation totale (kg)"
+      title = "Ranking of Buyers by Total Variation in kg",
+      x = "Buyers",
+      y = "total Variation (kg)",
+      fill = "total Variation (kg)"
     ) +
     scale_fill_gradient2(
       low = "#e73e01",   # Couleur pour les valeurs négatives
@@ -519,7 +579,7 @@ output$rankingPlot2 <- renderPlot({
 plotOutput("rankingPlot2", height = "50vh")
 ```
 
-# Llave de datos {data-navmenu="Variacion de compra" data-orientation=rows}
+# A View of Purchases by Buyers {data-navmenu="Purchase variation" data-orientation=rows}
 
 ## Sidebar {.sidebar}
 ```{r}
@@ -527,7 +587,7 @@ plotOutput("rankingPlot2", height = "50vh")
 # Utiliser radioGroupButtons pour sélectionner une condition
 radioGroupButtons(
   inputId = "ID005",
-  label = "Condicion:",
+  label = "Condition :",
   choices = c("Baba" = "baba", "Seco" = "seco", "Fermentado" = "fermentado"),
   selected = "baba"
 )
@@ -542,7 +602,7 @@ options_compradores <- c("Seleccionar todo", unique_compradores)
 # Utiliser pickerInput pour sélectionner un ou plusieurs acheteurs
 pickerInput(
   inputId = "ID006",
-  label = "Elija uno o todos compradores:",
+  label = "Choose One or All Buyers :",
   choices = options_compradores,
   selected = "Seleccionar todo",
   multiple = TRUE,
@@ -570,7 +630,7 @@ df_compra_filtered <- reactive({
 
 ## Column {data-height=1300}
 
-### BoxPlot
+### 
 ```{r}
 # Ajouter un graphique plotly pour voir les faltas selon les compradores et les conditions
 output$boxplot1 <- renderPlotly({
@@ -596,11 +656,11 @@ output$boxplot1 <- renderPlotly({
   ) %>%
     layout(
       title = list(
-        text = "Distribution de la différence de kg (acheté et rentré à l'usine) par Acheteur",
+        text = "Distribution of the Difference in kg (Purchased vs. Delivered to the Factory) by Buyer",
         x = 0.5
       ),
       xaxis = list(
-        title = "Acheteur",
+        title = "Buyers",
         tickangle = 45,
         tickfont = list(size = 10),
         titlefont = list(size = 12)
@@ -610,7 +670,7 @@ output$boxplot1 <- renderPlotly({
         titlefont = list(size = 12)
       ),
       legend = list(
-        title = list(text = "Acheteur"),
+        title = list(text = "Buyers"),
         font = list(size = 10)
       ),
       margin = list(t = 50)
@@ -633,7 +693,7 @@ output$valueBox1 <- renderUI({
   div(
     class ="custom-container",
     div(
-      h4("Le prix au kilo d'un sac acheté en moyenne"),
+      h4("The Average Price per Kilogram of a Purchased Bag"),
       h2(value)
     )
   )
@@ -651,7 +711,7 @@ output$valueBox2 <- renderUI({
   div(
     class ="custom-container2",
     div(
-      h4("Nombre d'achats par jours et par acheteurs"),
+      h4("Number of Purchases per Day and per Buyer"),
       h2(value)
     )
   )
@@ -669,7 +729,7 @@ output$valueBox3 <- renderUI({
   div(
     class ="custom-container",
     div(
-      h4("Total des Écarts de Poids entre Achat et Réception à l'Usine"),
+      h4("Total Weight Discrepancies between Purchase and Reception at the Factory"),
       h2(value)
     )
   )
@@ -690,7 +750,7 @@ output$valueBox4 <- renderUI({
   div(
     class ="custom-container2",
     div(
-      h4("Moyenne des Variations de Poids"),
+      h4("Average Weight Variations"),
       h2(value)
     )
   )
@@ -708,7 +768,7 @@ output$valueBox5 <- renderUI({
   div(
     class ="custom-container",
     div(
-      h4("Nombre de KG acheté (Brut arrivé à l'usine)"),
+      h4("Number of KG Purchased (Gross Arrived at the Factory)"),
       h2(value)
     )
   )
@@ -717,7 +777,7 @@ output$valueBox5 <- renderUI({
 uiOutput("valueBox5")
 ```
 
-# Compradores {data-navmenu="Variacion de compra" data-orientation=rows}
+# Weekly Purchase Overview by Buyer {data-navmenu="Purchase variation" data-orientation=rows}
 
 ## Sidebar {.sidebar}
 
@@ -726,7 +786,7 @@ uiOutput("valueBox5")
 # Radio buttons pour choisir la condition
 radioGroupButtons(
   inputId = "ID007",
-  label = "Condicion:",
+  label = "Condition :",
   choices = c("Baba" = "baba", "Seco" = "seco", "Fermentado" = "fermentado"),
   selected = "baba"
 )
@@ -740,7 +800,7 @@ options_compradores <- c("Seleccionar todo", unique_compradores)
 
 pickerInput(
   inputId = "ID008",
-  label = "Elija uno o todos compradores:",
+  label = "Choose One or All Buyers :",
   choices = options_compradores,
   selected = "Seleccionar todo",
   multiple = TRUE,
@@ -857,9 +917,9 @@ output$plot2 <- renderPlotly({
       expand = c(0, 0)
     ) +
     labs(
-      title = "Graphique des Kg Payés et Kg Entrés",
+      title = "Graph of Kg Paid vs. Kg Received",
       x = "Date",
-      y = "Kilogrammes",
+      y = "Kilograms",
       fill = "Type",
       color = "Type"
     ) +
@@ -916,11 +976,15 @@ output$table2 <- renderDT({
 DTOutput("table2")
 ```
 
-# Datos del tablero
+# Analysis of Producer Performance
 
-## Datos {.tabset}
+# Who are the outsiders ?
 
-### Horas Trabajado
+# Data Tables
+
+## Data {.tabset}
+
+### Horas Trabajadas
 ```{r}
 output$horasTrabajadas <- renderDT({
   DT::datatable(
