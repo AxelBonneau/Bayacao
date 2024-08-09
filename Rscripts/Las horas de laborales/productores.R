@@ -16,11 +16,11 @@ normalizar_municipalidades <- function(df, mapa_normalizacion) {
 
 # Importer les données
 importar_datos <- function() {
-  df_productores <- import(here("documents", "bayacao", "dashboard", "datasets", "19Juil", "Compra Cacao Bayacao PROVA BACKUP.xlsx"), sheet = "Compra") %>%
+  df_productores <- import(here("datasets", "Compra", "Compra Cacao Bayacao PROVA BACKUP.xlsx"), sheet = "Compra") %>%
     select(Fecha = 2, Productor = 5, Municipalidad = 6, Comprador = 18, Condicion = 22, Peso_pagado = 25) %>%
     mutate(Fecha = as.Date(Fecha))
   
-  df_compra <- import(here("Documents","Bayacao", "Dashboard", "datasets","Compra", "compra_filtra.xlsx"))
+  df_compra <- import(here("datasets","Compra", "compra_filtra.xlsx"))
   
   list(df_productores = df_productores, df_compra = df_compra)
 }

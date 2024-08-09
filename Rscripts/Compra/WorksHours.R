@@ -8,7 +8,7 @@ pacman::p_load(
 )
 
 # Chemin du fichier Excel
-file_path <- import(here("Documents","Bayacao", "Dashboard","datasets","Las horas de laborales","Work hours all units BAYACAO TRUCKS.xlsx"))
+file_path <- import(here("datasets","Las horas de laborales","Work hours all units BAYACAO TRUCKS.xlsx"))
 
 # Lire les noms de toutes les feuilles
 sheet_names <- excel_sheets(file_path)
@@ -77,7 +77,7 @@ process_sheet <- function(df) {
 processed_sheets <- lapply(all_sheets, process_sheet)
 
 # Chemin du nouveau fichier Excel
-output_file_path <- "./WorksHours/Work_hours.xlsx"
+output_file_path <- here("datasets","Compra","WorksHours.xlsx")
 
 # Créer un nouveau workbook
 wb <- createWorkbook()

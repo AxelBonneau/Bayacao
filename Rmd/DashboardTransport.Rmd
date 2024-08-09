@@ -94,8 +94,8 @@ df_hora_trabajadas <- reactive({
 dateRangeInput(
   inputId = "ID002",
   label = "Select a period :",
-  start = Sys.Date() - 2,  # Valeur par défaut, ajuster selon vos besoins
-  end = Sys.Date() - 1,
+  start = Sys.Date() - 1,  # Valeur par défaut, ajuster selon vos besoins
+  end = Sys.Date(),
   startview = "month",
   language = "es",
   separator = " à ",
@@ -114,10 +114,10 @@ observe({
   
   # Mettre à jour les inputs de date avec les valeurs min et max des données
   min_date <- min(as.Date(data$Tiempo,format = "%Y-%m-%d"), na.rm = TRUE)
-  max_date <- max(as.Date(data$Tiempo,format = "%Y-%m-%d"), na.rm = TRUE)
+  max_date <- max(as.Date(data$Tiempo,format = "%Y-%m-%d"), na.rm = TRUE) + 1
   
   # Calculer la date de fin pour les trois premiers jours
-  start_date <- max_date-1
+  start_date <- max_date - 1
   end_date <- max_date 
   
   updateDateRangeInput(session, "ID002",
@@ -179,7 +179,7 @@ output$map1 <- renderLeaflet({
               label = first(local_name))
   
   df_filtered_today <- df_filtered %>%
-    filter(Tiempo >= start_date & Tiempo <= end_date +1)
+    filter(Tiempo >= start_date & Tiempo <= end_date)
 
   if (!is.null(df_filtered) && nrow(df_filtered) > 0) {
 
@@ -439,19 +439,14 @@ df_filtered <- reactive({
 variations_df <- reactive({
   # Calculer le total pour chaque 'Comprador'
   summary_df <- filtered_df() %>%
-    group_by(Comprador, Condicion) %>%
-    summarise(delta_kg = sum(delta_kg, na.rm = TRUE)) %>%
-    ungroup() %>%
     group_by(Comprador) %>%
-    summarise(total_delta_kg = sum(delta_kg, na.rm = TRUE)) %>%
+    summarise(total_achat = sum(total_kg_pagado, na.rm = TRUE),
+              total_brut = sum(total_kg_Bruto, na.rm = TRUE)) %>%
     ungroup()
-  
-  # Calculer le total global pour toutes les proportions
-  total_global <- sum(summary_df$total_delta_kg, na.rm = TRUE)
   
   # Ajouter la proportion et trier les résultats
   summary_df <- summary_df %>%
-    mutate(total_proporcion_delta = total_delta_kg / abs(total_global)) %>%
+    mutate(total_proporcion_delta = (total_brut - total_achat)/total_brut) %>%
     arrange(desc(total_proporcion_delta))
   
   return(summary_df)
@@ -519,7 +514,7 @@ output$rankingPlot1 <- renderPlot({
               vjust = -0.5,
               size = 3) +
     labs(
-      title = "Ranking of Buyers by Total Variation in kg",
+      title = "Ranking of Buyers by Total Variation in %",
       x = "Buyers",
       y = "total Variation (%)",
       fill = "total Variation (%)"

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OGRVRTDataSource>
+    <OGRVRTLayer name="Integral_Historial_filtered-Historial_stop">
+        <SrcDataSource relativeToVRT="1">Integral_Historial_filtered.xlsx</SrcDataSource>
+        <!--Header=False-->
+        <SrcLayer>Historial_stop</SrcLayer>
+        <Field name="Tiempo" src="Tiempo" type="DateTime"/>
+        <Field name="Motor" src="Motor" type="String"/>
+        <Field name="local_name" src="local_name" type="String"/>
+        <Field name="distance" src="distance" type="Integer"/>
+        <Field name="time_diff" src="time_diff" type="Integer"/>
+        <Field name="speed" src="speed" type="Integer"/>
+        <Field name="is_stop" src="is_stop" type="Integer"/>
+        <GeometryType>wkbPoint</GeometryType>
+        <LayerSRS>EPSG:4326</LayerSRS>
+        <GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>
+    </OGRVRTLayer>
+</OGRVRTDataSource>
