@@ -68,7 +68,7 @@ carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), opti
 
 ```
 
-# Map of Driver Locations{data-orientation=rows}
+# Map of Driver Locations {data-orientation="rows"}
 
 ## Sidebar {.sidebar}
 
@@ -305,6 +305,7 @@ leafletOutput("map1", height="80vh")
 ## Données Clés
 
 ### 
+
 ```{r}
 output$valueBox6 <- renderUI({
   data <- df_hora_trabajadas()
@@ -325,6 +326,7 @@ uiOutput("valueBox6")
 ```
 
 ### 
+
 ```{r}
 output$valueBox7 <- renderUI({
   data <- df_hora_trabajadas()
@@ -349,6 +351,7 @@ uiOutput("valueBox7")
 ```
 
 ### 
+
 ```{r}
 output$valueBox8 <- renderUI({
   data <- df_hora_trabajadas()
@@ -470,7 +473,7 @@ variations2_df <- reactive({
 
 ```
 
-## Column {data-width=550}
+## Column {data-width="550"}
 
 ### 
 
@@ -506,9 +509,10 @@ plotOutput("barplot1", height = "50vh")
 
 ```
 
-## Ranking {data-width=450} 
+## Ranking {data-width="450"}
 
 ### 
+
 ```{r}
 output$rankingPlot1 <- renderPlot({
   ggplot(variations_df(), aes(x = reorder(Comprador, -total_proporcion_delta), y = total_proporcion_delta, fill = total_proporcion_delta)) +
@@ -544,6 +548,7 @@ plotOutput("rankingPlot1", height = "50vh")
 ```
 
 ### 
+
 ```{r}
 output$rankingPlot2 <- renderPlot({
   ggplot(variations2_df(), aes(x = reorder(Comprador, -total_delta_kg), y = total_delta_kg, fill = total_delta_kg)) +
@@ -577,9 +582,10 @@ output$rankingPlot2 <- renderPlot({
 plotOutput("rankingPlot2", height = "50vh")
 ```
 
-# A View of Purchases by Buyers {data-navmenu="Purchase variation" data-orientation=rows}
+# A View of Purchases by Buyers {data-navmenu="Purchase variation" data-orientation="rows"}
 
 ## Sidebar {.sidebar}
+
 ```{r}
 # ------------------- Sélecteur de Condition -------------------
 # Utiliser radioGroupButtons pour sélectionner une condition
@@ -617,9 +623,10 @@ df_compra_filtered <- reactive({
 
 ```
 
-## Column {data-height=1300}
+## Column {data-height="1300"}
 
 ### 
+
 ```{r}
 output$boxplot1 <- renderPlotly({
   df_compra_filter <- df_compra_filtered()
@@ -675,9 +682,10 @@ plotlyOutput("boxplot1", height = "90vh")
 
 ```
 
-## Column 
+## Column
 
 ### 
+
 ```{r}
 output$valueBox1 <- renderUI({
   df_compra_filter <- df_compra_filtered()
@@ -696,6 +704,7 @@ uiOutput("valueBox1")
 ```
 
 ### 
+
 ```{r}
 output$valueBox2 <- renderUI({
   df_compra_filter <- df_compra_filtered()
@@ -713,6 +722,7 @@ uiOutput("valueBox2")
 ```
 
 ### 
+
 ```{r}
 output$valueBox3 <- renderUI({
   df_compra_filter <- df_compra_filtered()
@@ -730,8 +740,8 @@ output$valueBox3 <- renderUI({
 uiOutput("valueBox3")
 ```
 
-
 ### 
+
 ```{r}
 output$valueBox4 <- renderUI({
   df_compra_filter <- df_compra_filtered()
@@ -752,6 +762,7 @@ uiOutput("valueBox4")
 ```
 
 ### 
+
 ```{r}
 output$valueBox5 <- renderUI({
   df_compra_filter <- df_compra_filtered()
@@ -769,7 +780,7 @@ output$valueBox5 <- renderUI({
 uiOutput("valueBox5")
 ```
 
-# Weekly Purchase Overview by Buyer {data-navmenu="Purchase variation" data-orientation=rows}
+# Weekly Purchase Overview by Buyer {data-navmenu="Purchase variation" data-orientation="rows"}
 
 ## Sidebar {.sidebar}
 
@@ -932,9 +943,10 @@ summary_table_dt <- reactive({
 
 ```
 
-## Column 
+## Column
 
 ### 
+
 ```{r}
 output$plot2 <- renderPlotly({
   x_var <- if (input$ID010 == "Days") "Date" else "Week_Start_Date"
@@ -977,7 +989,8 @@ plotlyOutput("plot2")
 
 ## Column
 
-###  
+### 
+
 ```{r}
 # Fonction pour styliser les valeurs de Variation_difference
 style_color <- function(value) {
@@ -1065,7 +1078,8 @@ df_diff_prod <- reactive({
 
 ## Column
 
-###
+### 
+
 ```{r}
 output$top_selling_producers <- renderPlotly({
   df <- df_diff_prod() %>%
@@ -1098,7 +1112,8 @@ plotlyOutput("top_selling_producers")
 
 ### en Kg
 
-####
+#### 
+
 ```{r}
 output$top_diff_producers <- renderPlotly({
   df <- df_diff_prod() %>%
@@ -1128,7 +1143,8 @@ plotlyOutput("top_diff_producers")
 
 ```
 
-####
+#### 
+
 ```{r}
 output$bottom_diff_producers <- renderPlotly({
   df <- df_diff_prod() %>%
@@ -1160,7 +1176,8 @@ plotlyOutput("bottom_diff_producers")
 
 ### En %
 
-####
+#### 
+
 ```{r}
 output$top_diff_producers_pct <- renderPlotly({
   df <- df_diff_prod() %>%
@@ -1190,7 +1207,8 @@ plotlyOutput("top_diff_producers_pct")
 
 ```
 
-####
+#### 
+
 ```{r}
 output$bottom_diff_producers_pct <- renderPlotly({
   df <- df_diff_prod() %>%
@@ -1222,6 +1240,12 @@ plotlyOutput("bottom_diff_producers_pct")
 
 # Analyse producers {data-navmenu="Analysis of Producer Performance"}
 
+## Sidebar {.sidebar}
+
+```{r}
+
+```
+
 # Who are the outsiders ?
 
 # Data Tables
@@ -1229,6 +1253,7 @@ plotlyOutput("bottom_diff_producers_pct")
 ## Data {.tabset}
 
 ### Horas Trabajadas
+
 ```{r}
 output$horasTrabajadas <- renderDT({
   DT::datatable(
@@ -1242,6 +1267,7 @@ DTOutput("horasTrabajadas")
 ```
 
 ### Compra
+
 ```{r}
 output$dataCompra <- renderDT({
   DT::datatable(
