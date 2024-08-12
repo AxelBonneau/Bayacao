@@ -90,7 +90,9 @@ Pour contribuer à ce projet :
 
 5.  Ouvrez une Pull Request.
 
-## Licence
+## Licences des Dépendances
 
-Ce projet est sous la licence MIT.
-Voir le fichier [Licence] pour plus de détails.
+Ce projet utilise plusieurs bibliothèques avec leurs propres licences. Pour plus de détails sur les licences des bibliothèques utilisées, veuillez consulter le fichier [LICENSES.md](./LICENSES.md).
+
+
+
