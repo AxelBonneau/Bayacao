@@ -8,6 +8,8 @@ pacman::p_load(
   dplyr
 )
 
+output_file <- here("datasets","Compra","desempeno_del_productor.xlsx")
+
 # Fonction pour normaliser les noms des municipalités
 normalizar_municipalidades <- function(df, mapa_normalizacion) {
   df %>%
@@ -25,40 +27,16 @@ importar_datos <- function() {
   list(df_productores = df_productores, df_compra = df_compra)
 }
 
-# Définir le mapping pour normaliser les noms
-mapa_normalizacion <- c(
-  "esperalvillo" = "Peralvillo",
-  "el dean" = "Cotuí",
-  "sanchez ramirez" = "Cotuí",
-  "San franc. De macoris" = "San Francisco de Macorís",
-  "La victoria" = "Yamasá",
-  "monte plata" = "Monte Plata",
-  "Monte Plata" = "Monte Plata",
-  "MONTE PLATA" = "Monte Plata",
-  "santo domingo" = "Santo Domingo Norte",
-  "Santo Domingo" = "Santo Domingo Norte",
-  "Santo Domingo Norte" = "Santo Domingo Norte",
-  "yamasa" = "Yamasá",
-  "Yamasa" = "Yamasá",
-  "YAMASA" = "Yamasá",
-  "no registrado" = "No Registrado",
-  "sabana grande de boya" = "Sabana Grande de Boyá",
-  "ramirez sanchez" = "Cotuí",
-  "Cotui" = "Cotuí"
-)
-
 # Prétraitement des données
 pretraiter_datos <- function(df_productores, df_compra) {
-  df_productores_normalizado <- normalizar_municipalidades(df_productores, mapa_normalizacion)
-  
-  df_mal_dia <- df_productores_normalizado %>%
+  df_mal_dia <- df_productores %>%
     left_join(df_compra, by = c("Fecha", "Comprador", "Condicion")) %>%
     na.omit()
   
-  df_mal_dia_filtrado <- df_mal_dia %>%
+  df_productores_dia <- df_mal_dia %>%
     group_by(Fecha, Productor, Condicion) %>%
     summarise(
-      Ubicacion = first(Ubicacion),
+      Ubicacion = first(Municipalidad),
       Comprador = first(Comprador),
       Peso_pagado = sum(Peso_pagado),
       total_kg_pagado = first(total_kg_pagado),
@@ -66,34 +44,25 @@ pretraiter_datos <- function(df_productores, df_compra) {
       delta_kg = first(delta_kg)
     )
   
-  datos_contados <- df_mal_dia_filtrado %>%
+  datos_contados <- df_productores_dia %>%
     group_by(Productor) %>%
     tally(name = "count")
   
-  df_mal_dia_filtrado %>%
+  df_productores_dia %>%
     inner_join(datos_contados, by = "Productor") %>%
     filter(count >= 10) %>%
     mutate(
       pct_peso = round(Peso_pagado / total_kg_pagado, 2),
       reparticion = pct_peso * delta_kg
-    )
-}
-
-# Calculer les différences par producteur
-calculer_diff_prod <- function(df_mal_dia_filtrado) {
-  df_mal_dia_filtrado %>%
-    group_by(Productor, Condicion) %>%
-    summarise(
-      delta_kg = sum(reparticion),
-      nbr_kg_vendido = sum(Peso_pagado)
-    ) %>%
-    arrange(delta_kg) %>%
-    mutate(pct = round(delta_kg / nbr_kg_vendido, 2))
+    )  %>%
+    select(Fecha, Productor, Condicion, Ubicacion, Comprador, pct_peso, reparticion)
 }
 
 # Exécuter le processus
 datos <- importar_datos()
-df_mal_dia_filtrado <- pretraiter_datos(datos$df_productores, datos$df_compra)
-df_diff_prod <- calculer_diff_prod(df_mal_dia_filtrado)
+df_productores_dia <- pretraiter_datos(datos$df_productores, datos$df_compra)
 
-
+wb <- createWorkbook()
+addWorksheet(wb, "desempeno del productor")
+writeData(wb, "desempeno del productor", df_productores_dia)
+saveWorkbook(wb, output_file, overwrite = T)

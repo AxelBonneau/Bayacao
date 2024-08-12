@@ -26,10 +26,12 @@ sheets_data <- lapply(sheets, function(sheet_name) {
 names(sheets_data) <- sheets
 
 output_path <- here("datasets","Las horas de laborales","Integral_Historial_filtered.xlsx")
+output_path2 <- here("datasets","Las horas de laborales","Integral_Historial_stop.xlsx")
+
+df_compra <- import(here("datasets","Compra","Compra Cacao Bayacao PROVA BACKUP.xlsx"), sheet = "ENTRADA CACAO en FABRICA")
 
 process_sheets_in_chunks <- function(sheets_data, sheets, output_path, chunk_size = 10000, stop_threshold = 60) {
   
-  # Fonction pour traiter une seule feuille en morceaux
   process_sheet_chunk <- function(data, chunk_start, chunk_end) {
     chunk <- data[chunk_start:chunk_end, ]
     
@@ -60,7 +62,11 @@ process_sheets_in_chunks <- function(sheets_data, sheets, output_path, chunk_siz
     # Identifier les arrêts
     chunk <- chunk %>%
       mutate(is_stop = ifelse(time_diff >= stop_threshold & `Velocidad (Kph)` < 1, TRUE, FALSE)) %>%
-      mutate(time_diff = ifelse(time_diff > 50000 & !is_stop, 0, time_diff))
+      mutate(time_diff = ifelse(time_diff > 50000 & !is_stop, 0, time_diff)) %>%
+      
+      # Filtrer les données entre 19h et 10h, sauf pour les arrêts
+      filter(!(format(Tiempo, "%H") >= 18 | format(Tiempo, "%H") < 10) & is_stop == T) %>%
+      filter(is_stop == T)
     
     chunk <- chunk %>%
       select(Tiempo, Motor, local_name, longitude, latitude, distance, time_diff, speed = `Velocidad (Kph)`, is_stop)
@@ -132,5 +138,80 @@ process_sheets_in_chunks <- function(sheets_data, sheets, output_path, chunk_siz
   return(processed_sheets)
 }
 
-process_sheets_in_chunks(sheets_data, sheets, output_path)
+df_historial_filtered <- process_sheets_in_chunks(sheets_data, sheets, output_path)
 
+df_historial_filtered <- Filter(function(x) !is.null(x) && is.data.frame(x$data), df_historial_filtered)
+
+# Extraire uniquement les dataframes
+combined_df <- bind_rows(lapply(df_historial_filtered, function(x) x$data))
+combined_df <- combined_df %>%
+  arrange(Tiempo)
+
+# Sauvegarder dans un fichier Excel
+wb <- createWorkbook()
+addWorksheet(wb, "Historial_stop")
+writeData(wb, "Historial_stop", combined_df)
+saveWorkbook(wb, output_path2, overwrite = TRUE)
+
+# Exemple d'utilisation de la fonction dans join_value_by_drivers
+join_value_by_drivers <- function(sheets_data, sheets, df_compra) {
+  process_sheet <- function(data, df_compra_filtered, sheet_name) {
+    if (is.data.table(data)) {
+      data <- as.data.frame(data)
+    }
+    
+    if (!is.data.frame(df_compra_filtered)) {
+      warning(paste("Les données filtrées pour le conducteur", sheet_name, "ne sont pas un dataframe."))
+      return(NULL)
+    }
+    
+    # Filtrer les arrêts
+    data <- data %>%
+      filter(is_stop == TRUE) %>%
+      filter(!(abs(longitude - (-69.8886)) < 0.0001 & abs(latitude - 18.8098) < 0.0001))
+    
+    
+    
+    # Ajouter le nom de la feuille aux résultats uniquement si merged_data n'est pas vide
+    if (nrow(merged_data) > 0) {
+      merged_data$sheet_name <- sheet_name
+    } else {
+      warning(paste("Aucun arrêt trouvé pour la feuille", sheet_name))
+    }
+    
+    return(merged_data)
+  }
+  
+  order_drivers <- c("Melvin de los Santos", "Ignacio Bonifacio", "Roberto De Jesus", "Remigio Cabrera", "Rangel Nunez")
+  
+  processed_sheets <- lapply(seq_along(sheets), function(i) {
+    sheet_name <- sheets[i]
+    driver <- order_drivers[i]
+    
+    df_compra_filtered <- df_compra %>%
+      filter(Comprador == driver)
+    
+    if (!is.data.frame(df_compra_filtered)) {
+      warning(paste("Les données filtrées pour le conducteur", driver, "ne sont pas un dataframe."))
+      return(NULL)
+    }
+    
+    # Extraire le dataframe correspondant à la feuille actuelle
+    data <- sheets_data[[i]]$data
+    
+    if (!is.data.frame(data)) {
+      warning(paste("La feuille", sheet_name, "n'est pas un dataframe."))
+      return(NULL)
+    }
+    
+    processed_data <- process_sheet(data, df_compra_filtered, sheet_name)
+    return(processed_data)
+  })
+  
+  processed_sheets <- Filter(Negate(is.null), processed_sheets)
+  
+  return(processed_sheets)
+}
+
+
+join_value_by_drivers(df_historial_filtered, sheets, df_compra)

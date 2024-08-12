@@ -5,6 +5,9 @@ output:
     orientation: column
     vertical_layout: fill
     theme: united
+  rmarkdown::github_document:
+    toc: true         # Ajouter une table des matières
+    html_preview: true # Permettre un aperçu HTML lors de l'exécution locale
 runtime: shiny
 ---
 
@@ -47,7 +50,7 @@ sheets_data <- lapply(sheets, function(sheet_name) {
 names(sheets_data) <- sheets
 
 df_compra <- import(here("datasets","Compra","compra_filtra.xlsx"))
-df_productores <- import(here("datasets","Compra", "productores.xlsx"))
+df_productores <- import(here("datasets","Compra", "desempeno_del_productor.xlsx"))
 
 # ------------------- Lecture du Fichier KML -------------------
 kml_file <- here("kml","doc.kml")
@@ -497,7 +500,7 @@ output$barplot1 <- renderPlot({
       strip.text = element_text(size = 14, face = "bold")
     ) +
     facet_wrap(~ Condicion, scales = "free_y")
-},width = "auto")
+})
 
 plotOutput("barplot1", height = "50vh")
 
@@ -534,7 +537,7 @@ output$rankingPlot1 <- renderPlot({
       strip.background = element_rect(fill = "lightgrey", color = "black"),
       strip.text = element_text(size = 14, face = "bold")
     )
-}, width = "auto")
+})
 
 plotOutput("rankingPlot1", height = "50vh")
 
@@ -569,7 +572,7 @@ output$rankingPlot2 <- renderPlot({
       strip.background = element_rect(fill = "lightgrey", color = "black"),
       strip.text = element_text(size = 14, face = "bold")
     )
-}, width = "auto")
+})
 
 plotOutput("rankingPlot2", height = "50vh")
 ```
@@ -591,15 +594,12 @@ radioGroupButtons(
 # Liste des acheteurs uniques triés
 unique_compradores <- sort(unique(df_compra$Comprador))
 
-# Créer une liste d'options pour le pickerInput
-options_compradores <- c("Seleccionar todo", unique_compradores)
-
 # Utiliser pickerInput pour sélectionner un ou plusieurs acheteurs
 pickerInput(
   inputId = "ID006",
   label = "Choose One or All Buyers :",
-  choices = options_compradores,
-  selected = "Seleccionar todo",
+  choices = unique_compradores,
+  selected = unique_compradores,
   multiple = TRUE,
   options = list(
     `actions-box` = TRUE,  # Permet de sélectionner/désélectionner tout
@@ -609,15 +609,9 @@ pickerInput(
 )
 
 # ------------------- Filtrage des Données -------------------
-# Fonction réactive pour filtrer les données en fonction de la condition et des acheteurs sélectionnés
+
 df_compra_filtered <- reactive({
-  if ("Seleccionar todo" %in% input$ID006) {
-    # Si "Seleccionar todo" est sélectionné, filtre uniquement par condition
-    df_compra %>% filter(Condicion == input$ID005)
-  } else {
-    # Sinon, filtre par acheteurs sélectionnés et condition
-    df_compra %>% filter(Comprador %in% input$ID006 & Condicion == input$ID005)
-  }
+  df_compra %>% filter(Comprador %in% input$ID006 & Condicion == input$ID005)
 })
 
 
@@ -627,16 +621,19 @@ df_compra_filtered <- reactive({
 
 ### 
 ```{r}
-# Ajouter un graphique plotly pour voir les faltas selon les compradores et les conditions
 output$boxplot1 <- renderPlotly({
   df_compra_filter <- df_compra_filtered()
   
+  # Palette de couleurs personnalisée
+  custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2")
+
   fig <- plot_ly(
     data = df_compra_filter,
     y = ~delta_kg,
     x = ~Comprador,
     type = "box",
     color = ~Comprador,  # Utiliser color pour les couleurs de remplissage
+    colors = custom_colors,  # Appliquer la palette de couleurs
     quartilemethod = "linear",
     boxpoints = "all",
     jitter = 0.3,
@@ -788,59 +785,80 @@ radioGroupButtons(
 
 # ------------------- Sélecteur de Acheteurs -------------------
 # Liste des acheteurs uniques
+# Liste des acheteurs uniques
 unique_compradores <- sort(unique(df_compra$Comprador))
-
-# Créer une liste d'options pour le pickerInput
-options_compradores <- c("Seleccionar todo", unique_compradores)
 
 pickerInput(
   inputId = "ID008",
-  label = "Choose One or All Buyers :",
-  choices = options_compradores,
-  selected = "Seleccionar todo",
+  label = "Choose Buyers :",
+  choices = unique_compradores,
+  selected = unique_compradores,  # Sélectionne tous les acheteurs par défaut
   multiple = TRUE,
   options = list(
-    `actions-box` = TRUE,  # Permet de sélectionner/désélectionner tout
     `selected-text-format` = "count > 3",  # Affiche un nombre si plus de 3 éléments sélectionnés
     `live-search` = TRUE  # Ajoute une fonction de recherche en direct
   )
 )
 
+# ------------------- Sélecteur de Période -------------------
+dateRangeInput(
+  inputId = "ID009",
+  label = "Sélectionner une période :",
+  start = min(df_compra$Fecha),
+  end = max(df_compra$Fecha),
+  min = min(df_compra$Fecha),
+  max = max(df_compra$Fecha),
+  format = "dd/mm/yyyy",
+  separator = " à "
+)
+
+# ------------------- Sélecteur d'Intervalle d'Affichage -------------------
+selectInput(
+  inputId = "ID010",
+  label = "Display data by :",
+  choices = c("Days", "Weeks"),
+  selected = "Weeks"
+)
+
 # ------------------- Données Filtrées -------------------
 # Réactive pour filtrer les données en fonction de la condition et des acheteurs sélectionnés
 df_compra_filtered2 <- reactive({
-  if ("Seleccionar todo" %in% input$ID008) {
-    df_compra %>% filter(Condicion == input$ID007)
-  } else {
-    df_compra %>% filter(Comprador %in% input$ID008 & Condicion == input$ID007)
+  df <- df_compra %>% 
+    filter(Condicion == input$ID007)
+  
+  if (!is.null(input$ID009)) {
+    df <- df %>% 
+      filter(Fecha >= input$ID009[1] & Fecha <= input$ID009[2])
   }
-})
-
-# Réactive pour filtrer les producteurs
-df_productores_filtered <- reactive({
-  if ("Seleccionar todo" %in% input$ID008) {
-    df_productores %>% filter(Condicion == input$ID007)
-  } else {
-    df_productores %>% filter(Comprador %in% input$ID008 & Condicion == input$ID007)
-  }
+  
+  return(df %>% filter(Comprador %in% input$ID008))
 })
 
 # ------------------- Données Longues -------------------
-# Transformation des données en format long et ajout de colonnes supplémentaires
 data_long <- reactive({
-  df_compra_filtered2() %>%
-    pivot_longer(cols = c("total_kg_pagado", "total_kg_Bruto"), names_to = "Type", values_to = "Kg") %>%
-    mutate(
-      Month_Year = format(as.Date(Fecha, format = "%Y-%m-%d"), "%Y-%m"),
-      Week = format(as.Date(Fecha, format = "%Y-%m-%d"), "%Y-%U"),
-      Week_Start_Date = as.Date(paste0(Week, "-1"), "%Y-%U-%u")
-    ) %>%
-    group_by(Week, Week_Start_Date, Type) %>%
-    summarise(Kg = sum(Kg), .groups = 'drop', Month_Year = first(Month_Year))
+  df <- df_compra_filtered2()
+  
+  if (input$ID010 == "Days") {
+    df %>%
+      pivot_longer(cols = c("total_kg_pagado", "total_kg_Bruto"), names_to = "Type", values_to = "Kg") %>%
+      mutate(
+        Date = as.Date(Fecha, format = "%A-%d-%m")
+      ) %>%
+      group_by(Date, Type) %>%
+      summarise(Kg = sum(Kg), .groups = 'drop')
+  } else {
+    df %>%
+      pivot_longer(cols = c("total_kg_pagado", "total_kg_Bruto"), names_to = "Type", values_to = "Kg") %>%
+      mutate(
+        Week = format(as.Date(Fecha, format = "%Y-%m-%d"), "%Y-%U"),
+        Week_Start_Date = as.Date(paste0(Week, "-1"), "%Y-%U-%u")
+      ) %>%
+      group_by(Week, Week_Start_Date, Type) %>%
+      summarise(Kg = sum(Kg), .groups = 'drop')
+  }
 })
 
 # ------------------- Tableau Résumé -------------------
-# Création d'un tableau résumé avec les données filtrées
 summary_table_dt <- reactive({
   df_filtered <- df_compra_filtered2()
 
@@ -848,31 +866,44 @@ summary_table_dt <- reactive({
   df_filtered <- df_filtered %>%
     mutate(
       Month = format(Fecha, "%B"),
-      Month = factor(Month, levels = month.name),  # Utiliser les niveaux de mois pour le tri correct
-      Week = isoweek(Fecha)
+      Month = factor(Month, levels = month.name)  # Utiliser les niveaux de mois pour le tri correct
     )
 
-  # Grouper les données par mois et semaine et calculer les sommes totales par catégorie
-  total_sums <- df_filtered %>%
-    group_by(Week) %>%
-    summarise(
-      Sum_total_kg_Bruto = sum(total_kg_Bruto, na.rm = TRUE),
-      Sum_delta_kg = sum(delta_kg, na.rm = TRUE),
-      Month = first(Month),
-      .groups = 'drop'
-    ) %>%
-    arrange(desc(Week))
+  # Filtrer les données en fonction du choix de l'utilisateur (jours ou semaines)
+  if (input$ID010 == "Days") {
+    df_filtered <- df_filtered %>%
+      mutate(Date = as.Date(Fecha)) %>%
+      group_by(Date) %>%
+      summarise(
+        Sum_total_kg_Bruto = sum(total_kg_Bruto, na.rm = TRUE),
+        Sum_delta_kg = sum(delta_kg, na.rm = TRUE),
+        Month = first(Month),
+        .groups = 'drop'
+      ) %>%
+      arrange(desc(Date))
+  } else {
+    df_filtered <- df_filtered %>%
+      mutate(Week = isoweek(Fecha)) %>%
+      group_by(Week) %>%
+      summarise(
+        Sum_total_kg_Bruto = sum(total_kg_Bruto, na.rm = TRUE),
+        Sum_delta_kg = sum(delta_kg, na.rm = TRUE),
+        Month = first(Month),
+        .groups = 'drop'
+      ) %>%
+      arrange(desc(Week))
+  }
 
   # Calculer les sommes cumulées
-  summary_table <- total_sums %>%
-    arrange(Week) %>%
+  summary_table <- df_filtered %>%
+    arrange(if (input$ID010 == "Days") Date else Week) %>%
     mutate(
       Cumulative_Sum_total_kg_Bruto = cumsum(Sum_total_kg_Bruto),
       Cumulative_Sum_delta_kg = cumsum(Sum_delta_kg),
       Variation_difference = (Cumulative_Sum_delta_kg - lag(Cumulative_Sum_delta_kg)) / abs(lag(Cumulative_Sum_delta_kg)) * 100,
       Variation_kg = Cumulative_Sum_delta_kg - lag(Cumulative_Sum_delta_kg)
     ) %>%
-    arrange(desc(Week)) %>%
+    arrange(desc(if (input$ID010 == "Days") Date else Week)) %>%
     mutate(
       Cumulative_Sum_total_kg_Bruto = replace_na(Cumulative_Sum_total_kg_Bruto, 0),
       Cumulative_Sum_delta_kg = replace_na(Cumulative_Sum_delta_kg, 0),
@@ -884,13 +915,20 @@ summary_table_dt <- reactive({
       Cumulative_Sum_delta_kg = paste0(Cumulative_Sum_delta_kg, " kg"),
       Variation_difference = paste0(round(Variation_difference, 2), " %"),
       Variation_kg = paste0(round(Variation_kg, 2), " kg")
-    ) %>%
-    select(
-      Month, Week, Sum_total_kg_Bruto, Cumulative_Sum_total_kg_Bruto, Cumulative_Sum_delta_kg, Variation_difference, Variation_kg
     )
+
+  # Sélection des colonnes en fonction de l'intervalle choisi
+  if (input$ID010 == "Days") {
+    summary_table <- summary_table %>%
+      select(Date, Sum_total_kg_Bruto, Cumulative_Sum_total_kg_Bruto, Cumulative_Sum_delta_kg, Variation_difference, Variation_kg)
+  } else {
+    summary_table <- summary_table %>%
+      select(Month, Week, Sum_total_kg_Bruto, Cumulative_Sum_total_kg_Bruto, Cumulative_Sum_delta_kg, Variation_difference, Variation_kg)
+  }
   
   summary_table
 })
+
 
 ```
 
@@ -899,16 +937,17 @@ summary_table_dt <- reactive({
 ### 
 ```{r}
 output$plot2 <- renderPlotly({
-  p <- ggplot(data_long(), aes(x = Week_Start_Date, y = Kg, fill = Type, color = Type, group = Type)) +
+  x_var <- if (input$ID010 == "Days") "Date" else "Week_Start_Date"
+  
+  p <- ggplot(data_long(), aes_string(x = x_var, y = "Kg", fill = "Type", color = "Type", group = "Type")) +
     geom_area(position = "dodge", alpha = 0.5) +
     geom_point(size = 2, shape = 21, stroke = 1.5) +
-    scale_fill_manual(values = c("total_kg_pagado" = "#E6B336", "total_kg_Bruto" = "#8B0000")) +
-    scale_color_manual(values = c("total_kg_pagado" = "#E6B336", "total_kg_Bruto" = "#8B0000")) +
+    scale_fill_manual(values = c("total_kg_pagado" = "#048B9A", "total_kg_Bruto" = "#e73e01")) +
+    scale_color_manual(values = c("total_kg_pagado" = "#048B9A", "total_kg_Bruto" = "#e73e01")) +
     scale_x_date(
       name = "Date",
-      date_breaks = "1 month",
-      date_labels = "%Y-%m (W%V)", # %V is the ISO week number
-      minor_breaks = "1 week",
+      date_breaks = if (input$ID010 == "Days") "1 week" else "1 month",
+      date_labels = if (input$ID010 == "Days") "%Y-%m-%d" else "%Y-%m (W%V)",
       expand = c(0, 0)
     ) +
     labs(
@@ -921,19 +960,19 @@ output$plot2 <- renderPlotly({
     theme_minimal(base_family = "Arial") +
     theme(
       plot.background = element_rect(fill = "white"),
-      axis.text.x = element_text(angle = 45, hjust = 1, color = "#8B0000"),
+      axis.text.x = element_text(angle = 45, hjust = 1, color = "#048B9A"),
       legend.position = "bottom",
       plot.title = element_text(size = 16, color = "#000000"),
-      plot.title.position = "plot",  # Positionne le titre au-dessus du graphique
+      plot.title.position = "plot",
       axis.title = element_text(size = 10, color = "#000000"),
-      axis.text = element_text(size = 10, color = "#000000"),
-      panel.grid.minor = element_blank(),
-      panel.grid.major = element_line(color = "#000000", size = 0.3)
+      axis.text = element_text(size = 10, color = "#000000")
     )
+  
   ggplotly(p)
 })
 
-plotlyOutput("plot2", width = "90vh")
+plotlyOutput("plot2")
+
 ```
 
 ## Column
@@ -971,7 +1010,217 @@ output$table2 <- renderDT({
 DTOutput("table2")
 ```
 
-# Analysis of Producer Performance
+# Ranking Producers {data-navmenu="Analysis of Producer Performance" data-navmenu-icon="fa-bookmark"}
+
+## Sidebar {.sidebar}
+
+```{r}
+# ------------------- Sélecteur de Condition -------------------
+# Radio buttons pour choisir la condition
+radioGroupButtons(
+  inputId = "ID011",
+  label = "Condition :",
+  choices = c("Baba" = "baba", "Seco" = "seco"),
+  selected = "baba"
+)
+
+# ------------------- Sélecteur de Période -------------------
+dateRangeInput(
+  inputId = "ID012",
+  label = "Sélectionner une période :",
+  start = min(df_productores$Fecha),
+  end = max(df_productores$Fecha),
+  min = min(df_productores$Fecha),
+  max = max(df_productores$Fecha),
+  format = "dd/mm/yyyy",
+  separator = " à "
+)
+
+# Réactive pour filtrer les producteurs
+df_productores_filtered <- reactive({
+  df <- df_productores %>% 
+    filter(Condicion == input$ID011)
+  
+  if (!is.null(input$ID012)) {
+    df <- df %>% 
+      filter(Fecha >= input$ID012[1] & Fecha <= input$ID012[2])
+  }
+  df
+})
+
+# Calculer les différences par producteur
+df_diff_prod <- reactive({
+  df <-  df_productores_filtered() %>%
+    group_by(Productor, Condicion) %>%
+    summarise(
+      delta_kg = sum(reparticion),
+      nbr_kg_vendido = sum(Peso_pagado)
+    ) %>%
+    arrange(delta_kg) %>%
+    mutate(pct = round(delta_kg / nbr_kg_vendido, 2))
+  df
+})
+
+```
+
+## Column
+
+###
+```{r}
+output$top_selling_producers <- renderPlotly({
+  df <- df_diff_prod() %>%
+    arrange(desc(nbr_kg_vendido)) %>%
+    head(10)
+  
+  p <- ggplot(df, aes(x = reorder(Productor, nbr_kg_vendido), y = nbr_kg_vendido, fill = Condicion)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(
+      title = "Top 10 Producteurs par Kilos Vendus",
+      x = "Producteur",
+      y = "Kilos Vendus (approximativement)",
+      fill = "Condition"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, hjust = 0.5),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10)
+    )
+  
+  ggplotly(p)
+})
+
+plotlyOutput("top_selling_producers")
+```
+
+## Column {.tabset}
+
+### en Kg
+
+####
+```{r}
+output$top_diff_producers <- renderPlotly({
+  df <- df_diff_prod() %>%
+    arrange(desc(delta_kg)) %>%
+    head(10)
+  
+  p <- ggplot(df, aes(x = reorder(Productor, delta_kg), y = delta_kg, fill = Condicion)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(
+      title = "Top 10 Producteurs par Différence (Delta kg)",
+      x = "Producteur",
+      y = "Différence (Delta kg)",
+      fill = "Condition"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, hjust = 0.5),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10)
+    )
+  
+  ggplotly(p)
+})
+
+plotlyOutput("top_diff_producers")
+
+```
+
+####
+```{r}
+output$bottom_diff_producers <- renderPlotly({
+  df <- df_diff_prod() %>%
+    arrange(delta_kg) %>%
+    head(10)
+  
+  p <- ggplot(df, aes(x = reorder(Productor, delta_kg), y = delta_kg, fill = Condicion)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(
+      title = "Pires 10 Producteurs par Différence (Delta kg)",
+      x = "Producteur",
+      y = "Différence (Delta kg)",
+      fill = "Condition"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, hjust = 0.5),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10)
+    )
+  
+  ggplotly(p)
+})
+
+plotlyOutput("bottom_diff_producers")
+
+```
+
+### En %
+
+####
+```{r}
+output$top_diff_producers_pct <- renderPlotly({
+  df <- df_diff_prod() %>%
+    arrange(desc(pct)) %>%
+    head(10)
+  
+  p <- ggplot(df, aes(x = reorder(Productor, pct), y = pct, fill = Condicion)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(
+      title = "Top 10 Producteurs par Différence (%)",
+      x = "Producteur",
+      y = "Différence (%)",
+      fill = "Condition"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, hjust = 0.5),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10)
+    )
+  
+  ggplotly(p)
+})
+
+plotlyOutput("top_diff_producers_pct")
+
+```
+
+####
+```{r}
+output$bottom_diff_producers_pct <- renderPlotly({
+  df <- df_diff_prod() %>%
+    arrange(pct) %>%
+    head(10)
+  
+  p <- ggplot(df, aes(x = reorder(Productor, pct), y = pct, fill = Condicion)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(
+      title = "Pires 10 Producteurs par Différence (%)",
+      x = "Producteur",
+      y = "Différence (%)",
+      fill = "Condition"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, hjust = 0.5),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10)
+    )
+  
+  ggplotly(p)
+})
+
+plotlyOutput("bottom_diff_producers_pct")
+
+```
+
+# Analyse producers {data-navmenu="Analysis of Producer Performance"}
 
 # Who are the outsiders ?
 
