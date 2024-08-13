@@ -133,7 +133,7 @@ observe({
 
 ```
 
-## Map of Dominican Republic {data-height=750}
+## Map of Dominican Republic 
 
 ```{r}
 # Fonction pour calculer les distances entre les points
@@ -260,26 +260,12 @@ output$map1 <- renderLeaflet({
     # Ajouter des légendes pour chaque type de données
     mymap <- mymap %>%
       addLegend(
+        title = "Legend :",
         position = "bottomleft",
-        colors = c("blue"),
-        labels = c("Routes"),
-        title = "Legend"
-      ) %>%
-      addLegend(
-        position = "bottomleft",
-        colors = c("orange"),
-        labels = c("Stops"),
-        title = "Legend",
+        colors = c("blue","orange","red"),
+        labels = c("Routes","Stops","Producers"),
         opacity = 0.5,
-        group = "Stops"
-      ) %>%
-      addLegend(
-        position = "bottomleft",
-        colors = c("red"),
-        labels = c("Producers"),
-        title = "Legend",
-        opacity = 0.5,
-        group = "Producers"
+        group = c("Routes","Stops","Producers")
       )
     
     # Ajouter un contrôle des couches pour activer/désactiver les couches
@@ -298,7 +284,7 @@ output$map1 <- renderLeaflet({
   }
 })
 
-leafletOutput("map1", height="80vh")
+div(class = "map", leafletOutput("map1", height = "100vh"))
 
 ```
 
@@ -322,7 +308,7 @@ output$valueBox6 <- renderUI({
 })
 
 
-uiOutput("valueBox6")
+div(class = "fixed-height-box", uiOutput("valueBox6"))
 ```
 
 ### 
@@ -347,7 +333,7 @@ output$valueBox7 <- renderUI({
 })
 
 
-uiOutput("valueBox7")
+div(class = "fixed-height-box",uiOutput("valueBox7"))
 ```
 
 ### 
@@ -382,7 +368,7 @@ output$valueBox8 <- renderUI({
   )
 })
 
-uiOutput("valueBox8")
+div(class = "fixed-height-box", uiOutput("valueBox8"))
 ```
 
 # Based on a Duration {data-navmenu="Purchase variation" data-navmenu-icon="fa-bookmark"}
@@ -1563,4 +1549,23 @@ DTOutput("dataCompra")
   overflow-y: auto;
 }
 
+.map {
+  height: 80vh; /* 80% de la hauteur de la fenêtre du navigateur */
+  width: 100%; /* Assure que la carte occupe toute la largeur disponible */
+}
+
+.fixed-height-box {
+  height: 150px; /* Ajustez cette hauteur selon vos besoins */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-bottom.leaflet-left .legend {
+  margin-bottom: 300px; /* Décale la légende vers le haut */
+}
+
+.leaflet-bottom.leaflet-right .legend {
+  margin-bottom: 250px; /* Décale la légende vers le haut */
+}
 ```
