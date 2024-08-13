@@ -509,7 +509,7 @@ plotOutput("barplot1", height = "50vh")
 
 ```
 
-## Ranking {data-width="450"}
+## Column {data-width="450"}
 
 ### 
 
@@ -796,7 +796,6 @@ radioGroupButtons(
 
 # ------------------- Sélecteur de Acheteurs -------------------
 # Liste des acheteurs uniques
-# Liste des acheteurs uniques
 unique_compradores <- sort(unique(df_compra$Comprador))
 
 pickerInput(
@@ -806,6 +805,7 @@ pickerInput(
   selected = unique_compradores,  # Sélectionne tous les acheteurs par défaut
   multiple = TRUE,
   options = list(
+    `actions-box` = TRUE,
     `selected-text-format` = "count > 3",  # Affiche un nombre si plus de 3 éléments sélectionnés
     `live-search` = TRUE  # Ajoute une fonction de recherche en direct
   )
@@ -1105,7 +1105,7 @@ output$top_selling_producers <- renderPlotly({
   ggplotly(p)
 })
 
-plotlyOutput("top_selling_producers")
+div(class = "scrollable-plot", plotlyOutput("top_selling_producers"))
 ```
 
 ## Column {.tabset}
@@ -1139,7 +1139,7 @@ output$top_diff_producers <- renderPlotly({
   ggplotly(p)
 })
 
-plotlyOutput("top_diff_producers")
+div(class = "scrollable-plot", plotlyOutput("top_diff_producers"))
 
 ```
 
@@ -1203,7 +1203,9 @@ output$top_diff_producers_pct <- renderPlotly({
   ggplotly(p)
 })
 
-plotlyOutput("top_diff_producers_pct")
+
+div(class = "scrollable-plot", plotlyOutput("top_diff_producers_pct"))
+
 
 ```
 
@@ -1234,7 +1236,7 @@ output$bottom_diff_producers_pct <- renderPlotly({
   ggplotly(p)
 })
 
-plotlyOutput("bottom_diff_producers_pct")
+div(class = "scrollable-plot", plotlyOutput("bottom_diff_producers_pct"))
 
 ```
 
@@ -1243,8 +1245,179 @@ plotlyOutput("bottom_diff_producers_pct")
 ## Sidebar {.sidebar}
 
 ```{r}
+# ------------------- Sélecteur de Condition -------------------
+# Radio buttons pour choisir la condition
+radioGroupButtons(
+  inputId = "ID013",
+  label = "Condition :",
+  choices = c("Baba" = "baba", "Seco" = "seco"),
+  selected = "baba"
+)
+
+# ------------------- Sélecteur de Période -------------------
+dateRangeInput(
+  inputId = "ID014",
+  label = "Sélectionner une période :",
+  start = min(df_productores$Fecha),
+  end = max(df_productores$Fecha),
+  min = min(df_productores$Fecha),
+  max = max(df_productores$Fecha),
+  format = "dd/mm/yyyy",
+  separator = " à "
+)
+
+# Réactive pour filtrer les producteurs
+df_productores_filtered2 <- reactive({
+  df <- df_productores %>% 
+    filter(Condicion == input$ID013)
+  
+  if (!is.null(input$ID014)) {
+    df <- df %>% 
+      filter(Fecha >= input$ID014[1] & Fecha <= input$ID014[2])
+  }
+  df
+})
+```
+
+## Column
+
+### 
+
+```{r}
+output$boxplot2 <- renderPlotly({
+  df_productores <- df_productores_filtered2()
+  
+  # Compter le nombre de données pour chaque producteur
+  count_data <- df_productores %>%
+    group_by(Productor) %>%
+    summarise(count = n()) %>%
+    arrange(desc(count))
+  
+  num_top_percent <- ceiling(nrow(count_data) * 0.50)
+  
+  # Sélectionner les producteurs avec les 25% les plus représentés
+  top_percent_productors <- count_data %>%
+    top_n(num_top_percent, count) %>%
+    pull(Productor)
+  
+  # Filtrer les données pour conserver uniquement les producteurs sélectionnés
+  df_filtered <- df_productores %>%
+    filter(Productor %in% top_percent_productors)
+  
+  # Palette de couleurs personnalisée
+  custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2")
+
+  fig <- plot_ly(
+    data = df_filtered,
+    y = ~reparticion,
+    x = ~Productor,
+    type = "box",
+    color = ~Productor,  # Utiliser color pour les couleurs de remplissage
+    colors = custom_colors,  # Appliquer la palette de couleurs
+    quartilemethod = "linear",
+    boxpoints = "all",
+    jitter = 0.3,
+    pointpos = -1.8,
+    marker = list(
+      outliercolor = "red",
+      size = 5
+    ),
+    line = list(
+      width = 0.5
+    )
+  ) %>%
+    layout(
+      title = list(
+        text = "Distribution of the Difference in kg (Purchased vs. Delivered to the Factory) by Top 25% Productors",
+        x = 0.5
+      ),
+      xaxis = list(
+        title = "Productors",
+        tickangle = 45,
+        tickfont = list(size = 10),
+        titlefont = list(size = 12)
+      ),
+      yaxis = list(
+        title = "Repartition",
+        titlefont = list(size = 12)
+      ),
+      legend = list(
+        title = list(text = "Productors"),
+        font = list(size = 10)
+      ),
+      margin = list(t = 50)
+    )
+  
+  fig
+})
+
+plotlyOutput("boxplot2", height = "90vh")
 
 ```
+
+## Column 
+
+###
+```{r}
+output$valueBox9 <- renderUI({
+  data <- df_hora_trabajadas()
+  
+  value <- paste0(round(sum(data$distance),2)," KM")
+  
+  div(
+    class = "custom-container",
+    div(
+      h4("Total Distance over the Last 15 Days"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox9")
+```
+
+# Who does he deal with the most ? {data-navmenu="Analysis of Producer Performance"}
+
+## Sidebar {.sidebar data-width=350}
+
+```{r}
+# ------------------- Sélecteur de Période -------------------
+dateRangeInput(
+  inputId = "ID015",
+  label = "Sélectionner une période :",
+  start = min(df_productores$Fecha),
+  end = max(df_productores$Fecha),
+  min = min(df_productores$Fecha),
+  max = max(df_productores$Fecha),
+  format = "dd/mm/yyyy",
+  separator = " à "
+)
+
+unique_producers <- sort(unique(df_productores$Productor))
+
+pickerInput(
+  inputId = "ID016",
+  label = "Choose Producers :",
+  choices = unique_producers,
+  selected = unique_producers[1],  # Sélectionne tous les acheteurs par défaut
+  multiple = F,
+  options = list(
+    size = 10,
+    `live-search` = TRUE  # Ajoute une fonction de recherche en direct
+  )
+)
+
+df_producers_unique <- sort
+
+```
+
+## Column
+
+```{r}
+
+```
+
 
 # Who are the outsiders ?
 
@@ -1383,6 +1556,12 @@ DTOutput("dataCompra")
   width: 100%; /* Remplir la largeur disponible */
   height: 100%; /* Remplir la hauteur disponible */
   text-align: center; /* Centre le texte */
+}
+
+.scrollable-plot {
+  height: 400px; /* Ajustez cette hauteur selon vos besoins */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 ```
