@@ -133,7 +133,7 @@ observe({
 
 ```
 
-## Map of Dominican Republic
+## Map of Dominican Republic {data-height=750}
 
 ```{r}
 # Fonction pour calculer les distances entre les points
@@ -1105,7 +1105,7 @@ output$top_selling_producers <- renderPlotly({
   ggplotly(p)
 })
 
-div(class = "scrollable-plot", plotlyOutput("top_selling_producers"))
+plotlyOutput("top_selling_producers")
 ```
 
 ## Column {.tabset}
@@ -1170,7 +1170,7 @@ output$bottom_diff_producers <- renderPlotly({
   ggplotly(p)
 })
 
-plotlyOutput("bottom_diff_producers")
+div(class = "scrollable-plot", plotlyOutput("bottom_diff_producers"))
 
 ```
 
@@ -1559,9 +1559,8 @@ DTOutput("dataCompra")
 }
 
 .scrollable-plot {
-  height: 400px; /* Ajustez cette hauteur selon vos besoins */
+  height: 40vh; /* Ajustez cette hauteur selon vos besoins */
   overflow-y: auto;
-  overflow-x: hidden;
 }
 
 ```
