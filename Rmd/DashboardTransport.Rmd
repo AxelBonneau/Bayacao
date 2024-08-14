@@ -4,10 +4,9 @@ output:
   flexdashboard::flex_dashboard:
     orientation: column
     vertical_layout: fill
-    theme: united
-  rmarkdown::github_document:
-    toc: true         # Ajouter une table des matières
-    html_preview: true # Permettre un aperçu HTML lors de l'exécution locale
+    theme: 
+      version: 3
+      bootswatch: united
 runtime: shiny
 ---
 
@@ -32,7 +31,8 @@ pacman::p_load(
   rio,
   here,
   geosphere,
-  shiny.fluent
+  ggplotify,
+  ragg
 )
 
 # ------------------- Lecture des Données Excel -------------------
@@ -51,6 +51,7 @@ names(sheets_data) <- sheets
 
 df_compra <- import(here("datasets","Compra","compra_filtra.xlsx"))
 df_productores <- import(here("datasets","Compra", "desempeno_del_productor.xlsx"))
+df_meteo <- import(here("datasets","meteo","datos_meteo.xlsx"))
 
 # ------------------- Lecture du Fichier KML -------------------
 kml_file <- here("kml","doc.kml")
@@ -369,6 +370,232 @@ output$valueBox8 <- renderUI({
 })
 
 div(class = "fixed-height-box", uiOutput("valueBox8"))
+```
+
+# Value Visualization Calendar 
+
+## Sidebar {.sidebar}
+
+```{r}
+choice_year <- unique(year(df_compra$Fecha))
+
+# ------------------- Sélecteur d'année -------------------
+selectizeInput(
+  inputId = "ID101",
+  label = "Choose a year :",
+  choices = choice_year,
+  selected = year(Sys.Date())
+)
+
+# ------------------- Sélecteur d'Acheteur -------------------
+# Liste des acheteurs uniques triés
+unique_compradores <- sort(unique(df_compra$Comprador))
+
+# Utiliser pickerInput pour sélectionner un ou plusieurs acheteurs
+pickerInput(
+  inputId = "ID102",
+  label = "Choose One or All Buyers :",
+  choices = unique_compradores,
+  selected = unique_compradores,
+  multiple = TRUE,
+  options = list(
+    `actions-box` = TRUE,  # Permet de sélectionner/désélectionner tout
+    `selected-text-format` = "count > 3",  # Affiche un nombre si plus de 3 éléments sélectionnés
+    `live-search` = TRUE  # Ajoute une fonction de recherche en direct
+  )
+)
+
+df_calender_compradores <- reactive({
+  df <- df_compra %>% filter(Comprador %in% input$ID102 & year(Fecha) == input$ID101)
+  df
+})
+
+df_calendar_meteo <- reactive({
+  df <- df_meteo %>% filter(year(date) == input$ID101)
+})
+
+```
+
+## Column {.tabset}
+
+### Différence KG acheté vs arrivé à l'usine
+
+```{r}
+
+output$calendarHeatmap <- renderPlot({
+  # Compléter les dates et créer les variables nécessaires
+  df <- df_calender_compradores() %>%
+    complete(Fecha = seq(min(Fecha), max(Fecha), by = "day")) %>%
+    mutate(
+      week = week(Fecha),
+      weekday = weekdays(Fecha),
+      day = day(Fecha),
+      month = factor(month(Fecha), levels = 1:12, labels = month.name),
+      year = year(Fecha),
+      weekday_num = factor(weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
+      month_num = as.integer(month(Fecha))
+    )
+  
+  # Ajuster les semaines pour les mois de décembre et janvier
+  df <- df %>%
+    mutate(
+      week = case_when(
+        month == "December" & week == 1 ~ 53,
+        month == "January" & week %in% 52:53 ~ 0,
+        TRUE ~ week
+      )
+    )
+  
+  # Calculer les quantiles pour delta_kg
+  quantiles <- quantile(df$delta_kg, probs = seq(0, 1, length.out = 8), na.rm = TRUE)
+  # Créer des catégories pour delta_kg basées sur les quantiles avec des labels descriptifs
+  df <- df %>%
+    mutate(
+      de = cut(delta_kg, breaks = quantiles, include.lowest = TRUE,
+               labels = c(
+                 paste0("< ", round(quantiles[2], 2)),    # Inférieur au premier quantile
+                 paste0(round(quantiles[2], 2), " - ", round(quantiles[3], 2)),
+                 paste0(round(quantiles[3], 2), " - ", round(quantiles[4], 2)),
+                 paste0(round(quantiles[4], 2), " - ", round(quantiles[5], 2)),
+                 paste0(round(quantiles[5], 2), " - ", round(quantiles[6], 2)),
+                 paste0(round(quantiles[6], 2), " - ", round(quantiles[7], 2)),
+                 paste0("> ", round(quantiles[7], 2))     # Supérieur au dernier quantile
+               ))
+    )
+  
+  # Vérifier le nombre de niveaux dans 'de'
+  n_levels <- length(levels(df$de))
+  
+  # Créer une palette de couleurs avec suffisamment de couleurs
+  col_p <- colorRampPalette(c("#FF0000", "#FF6F6F", "#FF9A9A", "#E1F1F2", "#D0F0FB", "#B0D6F5", "#00A3E0"))
+
+  # Créer le Calendar Heatmap
+  ggplot(df, aes(weekday_num, -week, fill = de)) +
+    geom_tile(colour = "white", size = 0.4) +
+    geom_text(aes(label = day), colour = "black", size = 2.5) +
+    scale_fill_manual(values = col_p(n_levels), na.value = "white") +
+    facet_wrap(~month, nrow = 4, ncol = 3, scales = "free") +
+    labs(
+      title = "Activity Calendar Heatmap",
+      subtitle = "Delta Activity by Day",
+      caption = "Data Source: Bayacao",
+      fill = "Delta kg"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 8),
+      strip.text = element_text(size = 12, face = "bold", color = "white"),
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 10),
+      panel.grid = element_blank(),
+      panel.border = element_rect(color = "white", fill = NA, linewidth = 0.5),
+      panel.spacing = unit(1, "lines"),
+      strip.background = element_rect(fill = "#772953", color = "white"),
+      plot.title = element_text(size = 20, face = "bold"),       # Taille du titre
+      plot.subtitle = element_text(size = 14),                   # Taille du sous-titre
+      plot.caption = element_text(size = 10)                     # Taille de la légende
+    )
+
+  
+})
+
+plotOutput("calendarHeatmap")
+```
+
+### Données Météo
+
+```{r}
+output$calendarHeatmap2 <- renderPlot({
+  # Compléter les dates et créer les variables nécessaires
+  df <- df_calendar_meteo() %>%
+    mutate(
+      date = as.Date(date)
+    ) %>%
+    complete(date = seq(min(date), max(date), by = "day")) %>%
+    mutate(
+      week = week(date),
+      weekday = weekdays(date),
+      day = day(date),
+      month = factor(month(date), levels = 1:12, labels = month.name),
+      year = year(date),
+      weekday_num = factor(weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
+      month_num = as.integer(month(date))
+    )
+  
+  # Ajuster les semaines pour les mois de décembre et janvier
+  df <- df %>%
+    mutate(
+      week = case_when(
+        month == "December" & week == 1 ~ 53,
+        month == "January" & week %in% 52:53 ~ 0,
+        TRUE ~ week
+      )
+    )
+  
+  # Définir les intervalles de précipitation avec des labels détaillés
+  df <- df %>%
+    mutate(
+      de = cut(prcp, 
+               breaks = c(-Inf, 0, 2, 10, 25, 50, Inf),
+               labels = c(
+                 "No Rain (< 0 mm)",
+                 "Very Light (0 - 2 mm)",
+                 "Light (2 - 10 mm)",
+                 "Moderate (10 - 25 mm)",
+                 "Heavy (25 - 50 mm)",
+                 "Very Heavy (> 50 mm)"
+               ),
+               include.lowest = TRUE
+      )
+    )
+  
+  # Vérifier le nombre de niveaux dans 'de'
+  n_levels <- length(levels(df$de))
+  
+  # Créer une palette de couleurs avec suffisamment de couleurs
+  col_p <- colorRampPalette(c("#F0F0F0", "#E1F1F2", "#B0D6F5", "#00A3E0"))
+
+  # Créer le Calendar Heatmap
+  ggplot(df, aes(weekday_num, -week, fill = de)) +
+    geom_tile(colour = "white", size = 0.4) +
+    geom_text(aes(label = day), colour = "black", size = 2.5) +
+    scale_fill_manual(values = col_p(n_levels), na.value = "white") +
+    facet_wrap(~month, nrow = 4, ncol = 3, scales = "free") +
+    labs(
+      title = "Daily Precipitation Overview in Santo Domingo",
+      subtitle = "Precipitation in mm by Day",
+      caption = "Data Source: Bayacao",
+      fill = "Precipitation"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 8),
+      strip.text = element_text(size = 12, face = "bold", color = "white"),
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 10),
+      panel.grid = element_blank(),
+      panel.border = element_rect(color = "white", fill = NA, linewidth = 0.5),
+      panel.spacing = unit(1, "lines"),
+      strip.background = element_rect(fill = "#772953", color = "white"),
+      plot.title = element_text(size = 20, face = "bold"),       # Taille du titre
+      plot.subtitle = element_text(size = 14),                   # Taille du sous-titre
+      plot.caption = element_text(size = 10)                     # Taille de la légende
+    )
+
+  
+})
+
+plotOutput("calendarHeatmap2")
 ```
 
 # Based on a Duration {data-navmenu="Purchase variation" data-navmenu-icon="fa-bookmark"}
@@ -1226,7 +1453,7 @@ div(class = "scrollable-plot", plotlyOutput("bottom_diff_producers_pct"))
 
 ```
 
-# Analyse producers {data-navmenu="Analysis of Producer Performance"}
+# Analyse producers {data-navmenu="Analysis of Producer Performance" data-orientation="rows"}
 
 ## Sidebar {.sidebar}
 
@@ -1263,9 +1490,19 @@ df_productores_filtered2 <- reactive({
   }
   df
 })
+
+# ------------------- Sélecteur de Quartile -------------------
+sliderInput(
+  inputId = "ID015",
+  label = "Select a Range Quartil",
+  min = 0.1,
+  max = 1,
+  value = 0.3,
+  step = 0.1
+)
 ```
 
-## Column
+## Column {data-height="1300"}
 
 ### 
 
@@ -1279,9 +1516,8 @@ output$boxplot2 <- renderPlotly({
     summarise(count = n()) %>%
     arrange(desc(count))
   
-  num_top_percent <- ceiling(nrow(count_data) * 0.50)
+  num_top_percent <- ceiling(nrow(count_data) * input$ID015)
   
-  # Sélectionner les producteurs avec les 25% les plus représentés
   top_percent_productors <- count_data %>%
     top_n(num_top_percent, count) %>%
     pull(Productor)
@@ -1314,7 +1550,7 @@ output$boxplot2 <- renderPlotly({
   ) %>%
     layout(
       title = list(
-        text = "Distribution of the Difference in kg (Purchased vs. Delivered to the Factory) by Top 25% Productors",
+        text = paste("Distribution of the Difference in kg (Purchased vs. Delivered to the Factory) by Top", input$ID015*100,"% Productors"),
         x = 0.5
       ),
       xaxis = list(
@@ -1370,7 +1606,7 @@ uiOutput("valueBox9")
 ```{r}
 # ------------------- Sélecteur de Période -------------------
 dateRangeInput(
-  inputId = "ID015",
+  inputId = "ID016",
   label = "Sélectionner une période :",
   start = min(df_productores$Fecha),
   end = max(df_productores$Fecha),
@@ -1383,18 +1619,28 @@ dateRangeInput(
 unique_producers <- sort(unique(df_productores$Productor))
 
 pickerInput(
-  inputId = "ID016",
+  inputId = "ID017",
   label = "Choose Producers :",
   choices = unique_producers,
   selected = unique_producers[1],  # Sélectionne tous les acheteurs par défaut
-  multiple = F,
+  multiple = T,
   options = list(
     size = 10,
+    `actions-box` = TRUE,  # Permet de sélectionner/désélectionner tout
+    `selected-text-format` = "count > 3",  # Affiche un nombre si plus de 3 éléments sélectionnés
     `live-search` = TRUE  # Ajoute une fonction de recherche en direct
   )
 )
 
-df_producers_unique <- sort
+df_producers_unique <- reactive({
+  if (!is.null(input$ID016)) {
+    df <- df_productores %>% 
+      filter(Fecha >= input$ID016[1] & Fecha <= input$ID016[2])
+  }
+  df <- df %>%
+    filter(Productor %in% input$ID017)
+  df
+})
 
 ```
 
@@ -1440,6 +1686,9 @@ DTOutput("dataCompra")
 ```
 
 ```{css, echo=FALSE}
+#navbar {
+  font-family: "Palatino Linotype", "Book Antiqua", "Palatino", serif;
+}
 
 /* Style des boutons de groupe de cases à cocher */
 .btn-check {
@@ -1550,12 +1799,12 @@ DTOutput("dataCompra")
 }
 
 .map {
-  height: 80vh; /* 80% de la hauteur de la fenêtre du navigateur */
+  height: 75vh; /* 80% de la hauteur de la fenêtre du navigateur */
   width: 100%; /* Assure que la carte occupe toute la largeur disponible */
 }
 
 .fixed-height-box {
-  height: 150px; /* Ajustez cette hauteur selon vos besoins */
+  height: 15vh; /* Ajustez cette hauteur selon vos besoins */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1568,4 +1817,55 @@ DTOutput("dataCompra")
 .leaflet-bottom.leaflet-right .legend {
   margin-bottom: 250px; /* Décale la légende vers le haut */
 }
+
+.form-control .btn {
+  background-color: #772953; /* Couleur de fond */
+  color: white; /* Couleur du texte */
+  padding: 13px; /* Espacement interne */
+  border-radius: 5px; /* Coins arrondis */
+  display: flex; /* Utilise Flexbox pour le centrage */
+  align-items: center; /* Centre verticalement */
+  justify-content: center; /* Centre horizontalement */
+  width: 100%; /* Remplir la largeur disponible */
+  height: 100%; /* Remplir la hauteur disponible */
+  text-align: center; /* Centre le texte */
+}
+
+.input-group-addon {
+  background-color: #E1BBCB;
+  color:white;
+}
+
+/* Changer la couleur de fond des éléments sélectionnés */
+.selectize-control.single .selectize-input {
+  background-color: #772953; /* Couleur de fond du champ de saisie */
+  color: #F0F0F0; /* Couleur du texte */
+}
+
+/* Changer la couleur de fond du menu déroulant */
+.selectize-control .selectize-dropdown {
+  background-color: #F0F0F0; /* Couleur de fond du menu */
+  color: #772953; /* Couleur du texte */
+}
+
+/* Changer la couleur de l'option déjà sélectionnée */
+.selectize-control.single .selectize-dropdown .option.selected {
+  background-color: #772953; /* Couleur de fond de l'option sélectionnée */
+  color: #F0F0F0; /* Couleur du texte de l'option sélectionnée */
+}
+
+/* Changer la couleur de surbrillance des options dans le menu */
+.selectize-control .selectize-dropdown .option:hover {
+  background-color: #772953; /* Couleur de fond au survol */
+  color: #F0F0F0; /* Couleur du texte au survol */
+}
+
+/* Style du label */
+label {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 16px;
+  color: #772953; /* Couleur du texte de l'étiquette */
+}
+
+
 ```
