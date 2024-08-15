@@ -13,7 +13,6 @@ runtime: shiny
 ```{r setup, include=FALSE}
 # ------------------- Chargement des bibliothèques -------------------
 pacman::p_load(
-  knitr,
   leaflet,
   plotly,
   shiny,
@@ -31,8 +30,8 @@ pacman::p_load(
   rio,
   here,
   geosphere,
-  ggplotify,
-  ragg
+  reshape2,
+  ggrepel
 )
 
 # ------------------- Lecture des Données Excel -------------------
@@ -66,6 +65,8 @@ carte_Dom <- st_read(here("dom_shp", "dom_admbnda_adm1_one_20210629.shp"), optio
 carte_Dom2 <- st_read(here("dom_shp", "dom_admbnda_adm3_one_20210629.shp"), options = "IGNORE_ERRORS=YES") %>%
   st_transform(crs = 4326)  # Transformer en CRS WGS 84
 
+# Palette de couleurs personnalisée
+custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2","#25A385","#661AEE","#B0E0E6")
 
 ```
 
@@ -134,7 +135,7 @@ observe({
 
 ```
 
-## Map of Dominican Republic 
+## Map of Dominican Republic
 
 ```{r}
 # Fonction pour calculer les distances entre les points
@@ -372,7 +373,7 @@ output$valueBox8 <- renderUI({
 div(class = "fixed-height-box", uiOutput("valueBox8"))
 ```
 
-# Value Visualization Calendar 
+# Depending on the day {data-navmenu="Value Visualization Calendar" data-navmenu-icon="fa-bookmark"}
 
 ## Sidebar {.sidebar}
 
@@ -410,15 +411,11 @@ df_calender_compradores <- reactive({
   df
 })
 
-df_calendar_meteo <- reactive({
-  df <- df_meteo %>% filter(year(date) == input$ID101)
-})
-
 ```
 
-## Column {.tabset}
+## Column 
 
-### Différence KG acheté vs arrivé à l'usine
+### 
 
 ```{r}
 
@@ -446,34 +443,33 @@ output$calendarHeatmap <- renderPlot({
       )
     )
   
-  # Calculer les quantiles pour delta_kg
-  quantiles <- quantile(df$delta_kg, probs = seq(0, 1, length.out = 8), na.rm = TRUE)
+
+  # Définir les niveaux de légende
+  levels_de <- c(
+    "< -80",
+    "-80;-50",
+    "-50;-20",
+    "-20;0",
+    "0;20",
+    "20;80",
+    "> 80"
+  )
+  
   # Créer des catégories pour delta_kg basées sur les quantiles avec des labels descriptifs
   df <- df %>%
     mutate(
-      de = cut(delta_kg, breaks = quantiles, include.lowest = TRUE,
-               labels = c(
-                 paste0("< ", round(quantiles[2], 2)),    # Inférieur au premier quantile
-                 paste0(round(quantiles[2], 2), " - ", round(quantiles[3], 2)),
-                 paste0(round(quantiles[3], 2), " - ", round(quantiles[4], 2)),
-                 paste0(round(quantiles[4], 2), " - ", round(quantiles[5], 2)),
-                 paste0(round(quantiles[5], 2), " - ", round(quantiles[6], 2)),
-                 paste0(round(quantiles[6], 2), " - ", round(quantiles[7], 2)),
-                 paste0("> ", round(quantiles[7], 2))     # Supérieur au dernier quantile
-               ))
+      de = cut(delta_kg, breaks = c(-Inf, -80, -50, -20, 0, 20, 80, +Inf), include.lowest = TRUE,
+               labels = levels_de)
     )
-  
-  # Vérifier le nombre de niveaux dans 'de'
-  n_levels <- length(levels(df$de))
-  
-  # Créer une palette de couleurs avec suffisamment de couleurs
-  col_p <- colorRampPalette(c("#FF0000", "#FF6F6F", "#FF9A9A", "#E1F1F2", "#D0F0FB", "#B0D6F5", "#00A3E0"))
 
+  # Créer une palette de couleurs avec suffisamment de couleurs
+  col_p <- colorRampPalette(c("#FF0000", "#FF6F6F", "#FF9A9A", "#ECCCA2", "#D0F0FB", "#B0D6F5", "#00A3E0"))
+  
   # Créer le Calendar Heatmap
   ggplot(df, aes(weekday_num, -week, fill = de)) +
     geom_tile(colour = "white", size = 0.4) +
     geom_text(aes(label = day), colour = "black", size = 2.5) +
-    scale_fill_manual(values = col_p(n_levels), na.value = "white") +
+    scale_fill_manual(values = col_p(length(levels_de)), breaks = levels_de, labels = levels_de, na.value = "white") +
     facet_wrap(~month, nrow = 4, ncol = 3, scales = "free") +
     labs(
       title = "Activity Calendar Heatmap",
@@ -496,9 +492,9 @@ output$calendarHeatmap <- renderPlot({
       panel.border = element_rect(color = "white", fill = NA, linewidth = 0.5),
       panel.spacing = unit(1, "lines"),
       strip.background = element_rect(fill = "#772953", color = "white"),
-      plot.title = element_text(size = 20, face = "bold"),       # Taille du titre
-      plot.subtitle = element_text(size = 14),                   # Taille du sous-titre
-      plot.caption = element_text(size = 10)                     # Taille de la légende
+      plot.title = element_text(size = 20, face = "bold"),
+      plot.subtitle = element_text(size = 14),
+      plot.caption = element_text(size = 10)
     )
 
   
@@ -507,70 +503,91 @@ output$calendarHeatmap <- renderPlot({
 plotOutput("calendarHeatmap")
 ```
 
-### Données Météo
+# View by Buyers {data-navmenu="Value Visualization Calendar"}
+
+## Sidebar {.sidebar}
 
 ```{r}
-output$calendarHeatmap2 <- renderPlot({
-  # Compléter les dates et créer les variables nécessaires
-  df <- df_calendar_meteo() %>%
-    mutate(
-      date = as.Date(date)
-    ) %>%
-    complete(date = seq(min(date), max(date), by = "day")) %>%
-    mutate(
-      week = week(date),
-      weekday = weekdays(date),
-      day = day(date),
-      month = factor(month(date), levels = 1:12, labels = month.name),
-      year = year(date),
-      weekday_num = factor(weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
-      month_num = as.integer(month(date))
-    )
+# ------------------- Sélecteur d'année -------------------
+# Charger les données pour les choix d'année et de mois
+choice_data <- df_compra %>%
+  mutate(YearMonth = paste(year(Fecha), month.name[month(Fecha)], sep = " - ")) %>%
+  distinct(YearMonth) %>%
+  pull(YearMonth)
+
+# Créer le sélecteur combiné
+selectizeInput(
+  inputId = "ID104",
+  label = "Choose Year and Month:",
+  choices = choice_data,
+  selected = paste(year(Sys.Date()), month.name[month(Sys.Date())], sep = " - ")
+)
+
+# Filtrer les données en fonction de l'année et du mois sélectionnés
+df_calendar_month <- reactive({
+  # Extraire l'année et le mois sélectionnés
+  selected_year_month <- input$ID104
+  selected_year <- as.numeric(str_extract(selected_year_month, "^\\d{4}"))
+  selected_month <- str_extract(selected_year_month, "[A-Za-z]+$")
   
-  # Ajuster les semaines pour les mois de décembre et janvier
-  df <- df %>%
+  # Filtrer le dataframe en fonction de l'année et du mois
+  df_compra %>%
+    filter(year(Fecha) == selected_year, month.name[month(Fecha)] == selected_month)
+})
+
+```
+
+## Column
+
+```{r}
+
+output$calendarHeatmap3 <- renderPlot({
+  # Compléter les dates pour le mois sélectionné et créer les variables nécessaires
+  df <- df_calendar_month() %>%
+    group_by(Comprador) %>% 
+    complete(
+      Fecha = seq(
+        as.Date(paste(year(min(Fecha)), month(min(Fecha)), "01", sep = "-")),
+        as.Date(paste(year(max(Fecha)), month(max(Fecha)), days_in_month(max(Fecha)), sep = "-")),
+        by = "day"
+      )
+    ) %>%
+    ungroup() %>%
+    mutate(
+      week = week(Fecha),
+      weekday_num = factor(weekdays(Fecha), levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
+      day = day(Fecha),
+      month = factor(month(Fecha), levels = 1:12, labels = month.name),
+      year = year(Fecha)
+    ) %>%
     mutate(
       week = case_when(
         month == "December" & week == 1 ~ 53,
         month == "January" & week %in% 52:53 ~ 0,
         TRUE ~ week
-      )
+      ),
+      de = cut(delta_kg, breaks = c(-Inf, -80, -50, -20, 0, 20, 80, Inf), include.lowest = TRUE,
+               labels = c("< -80", "-80;-50", "-50;-20", "-20;0", "0;20", "20;80", "> 80"))
     )
-  
-  # Définir les intervalles de précipitation avec des labels détaillés
-  df <- df %>%
-    mutate(
-      de = cut(prcp, 
-               breaks = c(-Inf, 0, 2, 10, 25, 50, Inf),
-               labels = c(
-                 "No Rain (< 0 mm)",
-                 "Very Light (0 - 2 mm)",
-                 "Light (2 - 10 mm)",
-                 "Moderate (10 - 25 mm)",
-                 "Heavy (25 - 50 mm)",
-                 "Very Heavy (> 50 mm)"
-               ),
-               include.lowest = TRUE
-      )
-    )
-  
-  # Vérifier le nombre de niveaux dans 'de'
-  n_levels <- length(levels(df$de))
   
   # Créer une palette de couleurs avec suffisamment de couleurs
-  col_p <- colorRampPalette(c("#F0F0F0", "#E1F1F2", "#B0D6F5", "#00A3E0"))
-
+  col_p <- colorRampPalette(c("#FF0000", "#FF6F6F", "#FF9A9A", "#ECCCA2", "#D0F0FB", "#B0D6F5", "#00A3E0"))
+  
+  # Définir les couleurs pour chaque break
+  colors <- col_p(7)  # Crée une palette de 7 couleurs
+  color_mapping <- setNames(colors, c("< -80", "-80;-50", "-50;-20", "-20;0", "0;20", "20;80", "> 80"))
+  
   # Créer le Calendar Heatmap
   ggplot(df, aes(weekday_num, -week, fill = de)) +
-    geom_tile(colour = "white", size = 0.4) +
-    geom_text(aes(label = day), colour = "black", size = 2.5) +
-    scale_fill_manual(values = col_p(n_levels), na.value = "white") +
-    facet_wrap(~month, nrow = 4, ncol = 3, scales = "free") +
+    geom_tile(color = "white", size = 0.4) +
+    geom_text(aes(label = day), color = "black", size = 2.5) +
+    scale_fill_manual(values = color_mapping, na.value = "white") +
+    facet_wrap(~Comprador, nrow = 4, ncol = 3, scales = "free") +
     labs(
-      title = "Daily Precipitation Overview in Santo Domingo",
-      subtitle = "Precipitation in mm by Day",
+      title = "Activity Calendar Heatmap",
+      subtitle = "Delta Activity by Day",
       caption = "Data Source: Bayacao",
-      fill = "Precipitation"
+      fill = "Delta kg"
     ) +
     theme_minimal() +
     theme(
@@ -587,15 +604,345 @@ output$calendarHeatmap2 <- renderPlot({
       panel.border = element_rect(color = "white", fill = NA, linewidth = 0.5),
       panel.spacing = unit(1, "lines"),
       strip.background = element_rect(fill = "#772953", color = "white"),
-      plot.title = element_text(size = 20, face = "bold"),       # Taille du titre
-      plot.subtitle = element_text(size = 14),                   # Taille du sous-titre
-      plot.caption = element_text(size = 10)                     # Taille de la légende
+      plot.title = element_text(size = 20, face = "bold"),
+      plot.subtitle = element_text(size = 14),
+      plot.caption = element_text(size = 10)
     )
-
-  
 })
 
-plotOutput("calendarHeatmap2")
+plotOutput("calendarHeatmap3", height = "100vh")
+```
+
+# Wind and Precipitation {data-navmenu="Meteo Data" data-navmenu-icon="fa-bookmark"}
+
+## Sidebar {.sidebar}
+
+```{r}
+choice_year <- unique(year(df_compra$Fecha))
+
+# ------------------- Sélecteur d'année -------------------
+selectizeInput(
+  inputId = "ID105",
+  label = "Choose a year :",
+  choices = choice_year,
+  selected = year(Sys.Date())
+)
+
+#------------------- Sélecteur de Time Range -------------------
+
+radioGroupButtons(
+  inputId = "ID106",
+  label = "Select a Range Time :",
+  choices = c("All the year" = "1", "The most recent 6 months" = "2" ,
+              "The most recent 3 months" = "3","The last 30 days" = "4"),
+  selected = "1",
+  direction = "vertical"
+)
+
+
+df_calendar_meteo <- reactive({
+  df <- df_meteo %>% filter(year(date) == input$ID105)
+  if (!is.null(input$ID106)) {
+    if (input$ID106 == "1"){
+      return(df) 
+    } else if (input$ID106 == "2"){
+      df <- df %>% filter(month(date) >= max(month(df$date))-6)
+      return(df)
+    } else if (input$ID106 == "3"){
+      df <- df %>% filter(month(date) >= max(month(df$date))-3)
+      return(df)
+    } else {
+      # Date maximale dans le dataframe
+      date_max <- max(as.Date(df$date)) - 29
+      
+      # Filtrer le dataframe pour obtenir les données des 30 derniers jours
+      df <- df %>%
+        filter(date > date_max)
+      return(df)
+    }
+  }
+  df
+})
+
+```
+
+## Column 
+
+###
+
+```{r}
+output$meteo3 <- renderPlot({
+  df <- df_calendar_meteo() %>%
+    select(date, prcp) %>%
+    mutate(
+      date = as.Date(date),
+      prcp = replace_na(prcp, 0))
+  
+  
+  ggplot(df, aes(x = date, y = prcp)) +
+    geom_bar(stat = "identity", aes(fill = prcp), color = "black", width = 0.7) +
+    geom_text(aes(label = ifelse(prcp > 25, as.character(prcp), "")), vjust = -0.3, size = 3.5, color = "black") +
+    labs(
+      title = "Daily Pluviometer in Monte Plata",
+      x = "Date",
+      y = "Pluviometer (mm)"
+    ) +
+    scale_x_date(date_labels = "%d-%b-%Y", date_breaks = "2 week") +  # Format des dates
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+      axis.title = element_text(size = 14, face = "bold"),
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      legend.position = "none"  # Supprimer la légende pour la couleur de remplissage
+    )
+})
+
+plotOutput("meteo3")
+```
+
+### 
+
+```{r}
+output$meteo1 <- renderPlot({
+  # Graphique combiné pour la vitesse du vent et les rafales
+  df <- df_calendar_meteo() %>%
+    select(date,wind,gust)
+  df <- na.omit(df)
+  
+  ggplot(df, aes(x = date)) +
+    geom_line(aes(y = wind, color = "Wind Speed (km/h)"), size = 1) +
+    geom_line(aes(y = gust, color = "Gusts (km/h)"), size = 1) +
+    labs(title = "Wind Speed and Gusts",
+         x = "Date",
+         y = "Wind Speed (km/h)",
+         color = "Legend") +
+    theme_minimal()
+
+})
+
+
+plotOutput("meteo1", height = "50vh")
+
+```
+
+## Column {data-orientation="rows"}
+
+### Rose des Vents {data-height=1000}
+
+```{r}
+output$meteo2 <- renderPlot({
+  df <- df_calendar_meteo() %>%
+    select(date,dir_wind,wind)
+  
+  df <- na.omit(df)
+  
+  # Regrouper les données par direction du vent
+  df_wind <- df %>%
+    mutate(
+      dir_bin = cut(dir_wind, breaks = seq(0, 360, by = 10), include.lowest = TRUE),
+      dir_bin_label = as.numeric(sub("\\((.+),.*", "\\1", dir_bin)) + 5  # Extraire le début de l'intervalle et ajouter 5 pour centrer
+    ) %>%
+    group_by(dir_bin_label) %>%
+    summarise(
+      freq = n(),                # Compter le nombre d'observations par tranche
+      wind_avg = mean(wind)      # Calculer la vitesse moyenne du vent par tranche
+    ) %>%
+    ungroup()
+  
+  # Créer une rose des vents plus esthétique avec ggplot2
+  ggplot(df_wind, aes(x = dir_bin_label, y = freq, fill = wind_avg)) +
+    geom_bar(stat = "identity", width = 10, color = "black") +
+    coord_polar(start = -pi/18) +
+    scale_x_continuous(
+      breaks = seq(0, 360, by = 30),
+      labels = paste0(seq(0, 360, by = 30), "°"),
+      limits = c(0, 360)
+    ) +
+    scale_fill_gradientn(
+      colors = c("#56B1F7", "#3366FF", "#2A52BE", "#000080"),
+      name = "Vitesse du vent\n(km/h)",
+      guide = guide_colorbar(barwidth = 10, barheight = 0.5, title.position = "top")
+    ) +
+    theme_minimal() +
+    theme(
+      panel.grid.major = element_line(color = "gray70", linetype = "dotted"),
+      panel.grid.minor = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_text(size = 12, face = "bold"),
+      axis.text.y = element_blank(),
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold")
+    ) +
+    labs(
+      title = "Rose des Vents"
+    )
+})
+
+plotOutput("meteo2", height = "50vh")
+```
+
+### Données 
+
+####
+
+```{r}
+output$valueBox12 <- renderUI({
+  data <- df_calendar_meteo()
+  
+  value <- paste0(round(sum(data$prcp, na.rm = T),2)," mm")
+  
+  div(
+    class = "custom-container",
+    div(
+      h4("Total Precipitation"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox12")
+```
+
+####
+
+```{r}
+output$valueBox13 <- renderUI({
+  data <- df_calendar_meteo()
+  
+  value <- paste0(round(mean(data$dir_wind, na.rm = T),2),"ø")
+  
+  div(
+    class = "custom-container2",
+    div(
+      h4("Wind Direction"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox13")
+```
+
+# The temperature level {data-navmenu="Meteo Data"} 
+
+## Column {data-width=1200}
+
+###
+
+```{r}
+output$meteo4 <- renderPlotly({
+  # Transformer les données
+  df_long <- melt(df_calendar_meteo(), id.vars = "date", measure.vars = c("temp", "rs", "hr"),
+                  variable.name = "variable", value.name = "value")
+  
+  p <- ggplot(df_long, aes(x = date, y = value, color = variable, linetype = variable)) +
+    geom_line(size = 1) +
+    facet_grid(variable ~ ., scales = "free_y") +
+    scale_color_manual(values = c(
+      "temp" = "#0056d6",   # Bleu clair
+      "rs" = "#ff6a13",    # Orange clair
+      "hr" = "#4aa06c")) + # Vert clair
+    scale_linetype_manual(values = c(
+      "temp" = "solid",
+      "rs" = "solid",
+      "hr" = "solid")) + # Types de lignes pour chaque variable
+    labs(
+      title = "Température, Rayonnement Solaire et Taux d'Humidité",
+      x = "Date",
+      y = "Valeur",
+      color = "Variables",
+      linetype = "Variables"
+    ) +
+    theme_minimal(base_size = 14, base_family = "Palatino") +
+    theme(
+      strip.text = element_text(size = 14, face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+      axis.title = element_text(size = 12, face = "bold"),
+      plot.title = element_text(size = 16, face = "bold"),
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 10),
+      panel.grid.major = element_line(color = "#F4E6E0"),
+      panel.grid.minor = element_line(color = "#F4E6E0"),
+      legend.position = "none"
+    ) 
+    
+  
+  # Convertir le graphique en interactif avec plotly
+  ggplotly(p)
+})
+
+
+plotlyOutput("meteo4")
+```
+
+## Column
+
+###
+
+```{r}
+output$valueBox9 <- renderUI({
+  data <- df_calendar_meteo()
+  
+  value <- paste0(round(mean(data$temp, na.rm = T),2)," °C")
+  
+  div(
+    class = "custom-container",
+    div(
+      h4("Average temperature"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox9")
+```
+
+###
+
+```{r}
+output$valueBox10 <- renderUI({
+  data <- df_calendar_meteo()
+  
+  value <- paste0(round(mean(data$rs, na.rm = T),2)," W/m²")
+  
+  div(
+    class = "custom-container2",
+    div(
+      h4("Average Solar Radiation"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox10")
+```
+
+###
+
+```{r}
+output$valueBox11 <- renderUI({
+  data <- df_calendar_meteo()
+  
+  value <- paste0(round(mean(data$hr, na.rm = T),2)," %")
+  
+  div(
+    class = "custom-container",
+    div(
+      h4("Average rate humidity"),
+      h2(value)
+    )
+  )
+})
+
+
+uiOutput("valueBox11")
 ```
 
 # Based on a Duration {data-navmenu="Purchase variation" data-navmenu-icon="fa-bookmark"}
@@ -843,9 +1190,6 @@ df_compra_filtered <- reactive({
 ```{r}
 output$boxplot1 <- renderPlotly({
   df_compra_filter <- df_compra_filtered()
-  
-  # Palette de couleurs personnalisée
-  custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2")
 
   fig <- plot_ly(
     data = df_compra_filter,
@@ -1182,7 +1526,7 @@ output$plot2 <- renderPlotly({
       fill = "Type",
       color = "Type"
     ) +
-    theme_minimal(base_family = "Arial") +
+    theme_minimal(base_family = "Palatino") +
     theme(
       plot.background = element_rect(fill = "white"),
       axis.text.x = element_text(angle = 45, hjust = 1, color = "#048B9A"),
@@ -1526,8 +1870,7 @@ output$boxplot2 <- renderPlotly({
   df_filtered <- df_productores %>%
     filter(Productor %in% top_percent_productors)
   
-  # Palette de couleurs personnalisée
-  custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2")
+  
 
   fig <- plot_ly(
     data = df_filtered,
@@ -1577,31 +1920,15 @@ plotlyOutput("boxplot2", height = "90vh")
 
 ```
 
-## Column 
+## Column
 
-###
-```{r}
-output$valueBox9 <- renderUI({
-  data <- df_hora_trabajadas()
-  
-  value <- paste0(round(sum(data$distance),2)," KM")
-  
-  div(
-    class = "custom-container",
-    div(
-      h4("Total Distance over the Last 15 Days"),
-      h2(value)
-    )
-  )
-})
+### 
 
 
-uiOutput("valueBox9")
-```
 
 # Who does he deal with the most ? {data-navmenu="Analysis of Producer Performance"}
 
-## Sidebar {.sidebar data-width=350}
+## Sidebar {.sidebar data-width="350"}
 
 ```{r}
 # ------------------- Sélecteur de Période -------------------
@@ -1647,43 +1974,45 @@ df_producers_unique <- reactive({
 ## Column
 
 ```{r}
+output$pie1 <- renderPlot({
+  df <- df_producers_unique()
+  df <- as.data.frame(table(df$Comprador))
+  colnames(df) <- c("Comprador", "Count")
+  df <- df %>%
+    arrange(desc(Count)) %>%
+    mutate(percentage = Count / sum(Count) * 100,  # Calcul des pourcentages
+           label = paste0("(", round(percentage, 1), "%)"))  # Création des étiquettes avec pourcentages
+  
+  ggplot(df, aes(x = seq_along(Count), y = sqrt(Count), fill = Comprador)) +
+    geom_col(width = 1, color = "grey10") +  # Couleur des bordures pour des segments clairs
+    coord_radial("x", rotate.angle = T, expand = F) +
+    
+    # Ajouter les étiquettes avec les pourcentages en dehors des segments
+    geom_text(aes(y = sqrt(Count) / 2 + 1.5,  # Position des étiquettes à l'extérieur des segments
+                  label = label),
+              size = 4, 
+              color = "black", 
+              fontface = "bold",
+              hjust = 0,
+              nudge_x = 0) +
+    
+    labs(title = "Distribution des Producteurs",
+         fill = "Producteurs") +
+    theme_void() +  # Supprime les éléments de thème inutiles
+    theme(
+      plot.title = element_text(size = 18, face = "bold", family = "Palatino Linotype"),
+      legend.title = element_text(size = 12, family = "Palatino Linotype"),
+      legend.text = element_text(size = 10, family = "Palatino Linotype"),
+      panel.background = element_rect(fill = "#F9F9F9"),  # Couleur de fond du graphique
+      plot.background = element_rect(fill = "#F9F9F9")  # Couleur de fond du graphique
+    )
+})
+
+plotOutput("pie1")
 
 ```
-
 
 # Who are the outsiders ?
-
-# Data Tables
-
-## Data {.tabset}
-
-### Horas Trabajadas
-
-```{r}
-output$horasTrabajadas <- renderDT({
-  DT::datatable(
-    df_hora_trabajadas(),
-    rownames = FALSE, 
-    filter = "top"
-  )
-})
-
-DTOutput("horasTrabajadas")
-```
-
-### Compra
-
-```{r}
-output$dataCompra <- renderDT({
-  DT::datatable(
-    df_compra,
-    rownames = FALSE, 
-    filter = "top"
-  )
-})
-
-DTOutput("dataCompra")
-```
 
 ```{css, echo=FALSE}
 #navbar {
